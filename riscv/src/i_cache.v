@@ -8,6 +8,7 @@ module i_cache (
     output reg [31:0] mc_ins_addr,
     input wire mc_ins_rdy,
     input wire [31:0] mc_ins,
+    input wire ic_enable,
     //instruction_fetcher
     input wire [31:0] if_ins_addr,
     input wire if_ins_asked,
@@ -15,13 +16,13 @@ module i_cache (
     output reg [31:0] if_ins
 );
   parameter ICSIZE = 32;
-  //todo ic_enable 为0时的等待
-  reg [31:0] pc = 0;
+  //ic_enable 为0时的等待
   reg [31:0] instruction[ICSIZE-1:0];
   reg [31:0] instruction_pc[ICSIZE-1:0];
   reg [15:0] instruction_age[ICSIZE-1:0];  //0为未占用,指令年龄最小为1
-  reg cache_miss = 0;
+  reg cache_miss;
   reg [31:0] now_instruction;
+  reg waiting_for_ic_enable_to_be_true;
   integer i, ins_to_be_replaced, max_age, has_empty;
   always @(*) begin
     if (if_ins_asked) begin
@@ -49,26 +50,48 @@ module i_cache (
     end
   end
   always @(posedge clk) begin
-    if (if_ins_asked) begin
-      if (cache_miss) begin
-        //向MC要求指令
+    if (rst) begin
+      for (i = 0; i < ICSIZE; i = i + 1) begin
+        instruction[i] <= 0;
+        instruction_pc[i] <= 0;
+        instruction_age[i] <= 0;
+      end
+      now_instruction <= 0;
+      waiting_for_ic_enable_to_be_true <= 0;
+    end else if (!rdy) begin
+
+    end else begin
+      if (if_ins_asked) begin
+        if (cache_miss) begin
+          //向MC要求指令
+          if (ic_enable) begin
+            mc_ins_asked <= 1;
+            mc_ins_addr  <= if_ins_addr;
+          end else begin
+            waiting_for_ic_enable_to_be_true <= 1;
+          end
+        end else begin
+          //把命中的指令输出
+          if_ins_rdy <= 1;
+          if_ins <= now_instruction;
+        end
+      end
+      if (waiting_for_ic_enable_to_be_true && ic_enable) begin
         mc_ins_asked <= 1;
-        mc_ins_addr  <= if_ins_addr;
-      end else begin
-        //把命中的指令输出
+        mc_ins_addr <= if_ins_addr;
+        waiting_for_ic_enable_to_be_true <= 0;
+      end
+      if (mc_ins_rdy) begin
+        //把指令送入if
         if_ins_rdy <= 1;
-        if_ins <= now_instruction;
+        if_ins <= mc_ins;
+        //填充空位或把最老的换下去
+        instruction[ins_to_be_replaced] <= mc_ins;
+        instruction_pc[ins_to_be_replaced] <= if_ins_addr;
+        instruction_age[ins_to_be_replaced] <= 1;
       end
     end
-    if (mc_ins_rdy) begin
-      //把指令送入if
-      if_ins_rdy <= 1;
-      if_ins <= mc_ins;
-      //填充空位或把最老的换下去
-      instruction[ins_to_be_replaced] <= mc_ins;
-      instruction_pc[ins_to_be_replaced] <= if_ins_addr;
-      instruction_age[ins_to_be_replaced] <= 1;
-    end
+
   end
 
 

@@ -28,6 +28,15 @@ module reservation_station (
     input wire rs_update_flag,
     input wire [3:0] rs_commit_rename,
     input wire [31:0] rs_value,
+    //predictor
+    input wire rs_flush,
+    //LSB
+    output reg ls_mission,
+    output reg [3:0] ls_ins_rnm,
+    output reg [5:0] ls_op_type,
+    output reg [31:0] ls_addr_offset,
+    output reg [31:0] ls_ins_rs1,
+    output reg [31:0] store_ins_rs2,
     //ALUs
     input wire alu1_busy,
     output reg alu1_mission,  //是否向alu1传递新指令
@@ -89,184 +98,283 @@ module reservation_station (
   reg operand_1_rdy[RSSIZE-1:0];
   reg operand_2_rdy[RSSIZE-1:0];
   reg [3:0] rob_rnm[RSSIZE-1:0];  //记录的是来自Rob中哪条指令
-  integer i, ready1_found, ready2_found, empty_ins, ready1, ready1_ins, ready2, ready2_ins;
+  reg [31:0] load_store_addr_offset[RSSIZE-1:0];
+  reg op_is_ls[RSSIZE-1:0];
+  integer
+      i,
+      ready1_found,
+      ready2_found,
+      empty_ins,
+      ready1,
+      ready1_ins,
+      ready2,
+      ready2_ins,
+      ls_ready_found,
+      ls_ready_ins;
   //特判:CDB广播的指令恰巧被查询register信息刚送回来的指令所需要
   always @(*) begin
     for (i = 0; i < RSSIZE; i = i + 1) begin
       ready1_found = 0;
       ready2_found = 0;
+      ls_ready_ins = 0;
       if (!busy[i]) empty_ins = i;
       else if (operand_1_rdy[i] && operand_2_rdy[i]) begin
-        if (!ready1_found) begin
-          ready1_ins   = i;
-          ready1_found = 1;
-        end else if (!ready2_found) begin
-          ready2_ins   = i;
-          ready2_found = 1;
+        if (op_is_ls[i]) begin
+          if (!ls_ready_found) begin
+            ls_ready_found = 1;
+            ls_ready_ins   = i;
+          end
+        end else begin
+          if (!ready1_found) begin
+            ready1_ins   = i;
+            ready1_found = 1;
+          end else if (!ready2_found) begin
+            ready2_ins   = i;
+            ready2_found = 1;
+          end
         end
       end
     end
   end
   always @(posedge clk) begin
-    if (rename_finish) begin
-      //上周期询问指令被送回来
-      if (operand_1_busy) begin
-        operand_1_ins[rename_finish_id] <= operand_1_rename;
-      end else begin
-        operand_1[rename_finish_id] <= operand_1_data_from_reg;
-        operand_1_rdy[rename_finish_id] <= 1;
-      end
-      if (!operand_2_rdy[rename_finish_id]) begin
-        if (operand_2_busy) begin
-          operand_2_ins[rename_finish_id] <= operand_2_rename;
-        end else begin
-          operand_2[rename_finish_id] <= operand_2_data_from_reg;
-          operand_2_rdy[rename_finish_id] <= 1;
-        end
-      end
-    end
-    if (new_ins_flag) begin
-      busy[empty_ins] <= 1;
-      rename_need <= 1;
-      rename_need_id <= empty_ins;
-      new_ins_rd_rename <= rename;
-      new_ins_rd <= rename_reg;
-      rob_rnm[empty_ins] <= rename;
-
-      //下一步是分case对指令进行具体解析，更新其信息，并向register同时传达重命名信息和询问所需寄存器
-      //LUI、JAL、AUIPC已处理完,Load/Store类指令不会被送到这里,只需处理剩下的
-      case (new_ins[6:0])
-        7'b1100111: begin
-          //JALR
-          op_type[empty_ins] <= JALR;
-          operand_1_rdy[empty_ins] <= 0;
-          operand_2_rdy[empty_ins] <= 1;
-          operand_2[empty_ins] <= {{20{new_ins[31]}}, new_ins[31:20]};
-          operand_1_flag <= 1;
-          operand_2_flag <= 0;
-          operand_1_reg <= new_ins[19:15];
-        end
-        7'b1100011: begin
-          //Branch
-          case (new_ins[14:12])
-            3'b000: op_type[empty_ins] <= BEQ;
-            3'b001: op_type[empty_ins] <= BNE;
-            3'b100: op_type[empty_ins] <= BLT;
-            3'b101: op_type[empty_ins] <= BGE;
-            3'b110: op_type[empty_ins] <= BLTU;
-            3'b111: op_type[empty_ins] <= BGEU;
-          endcase
-          operand_1_rdy[empty_ins] <= 0;
-          operand_2_rdy[empty_ins] <= 0;
-          operand_1_flag <= 1;
-          operand_2_flag <= 1;
-          operand_1_reg <= new_ins[19:15];
-          operand_2_reg <= new_ins[24:20];
-        end
-        7'b0010011: begin
-          //I
-          case (new_ins[14:12])
-            3'b000: op_type[empty_ins] <= ADDI;
-            3'b010: op_type[empty_ins] <= SLTI;
-            3'b011: op_type[empty_ins] <= SLTIU;
-            3'b100: op_type[empty_ins] <= XORI;
-            3'b110: op_type[empty_ins] <= ORI;
-            3'b111: op_type[empty_ins] <= ANDI;
-            3'b001: op_type[empty_ins] <= SLLI;
-            3'b101: begin
-              case (new_ins[31:25])
-                7'b0000000: op_type[empty_ins] <= SRLI;
-                7'b0100000: op_type[empty_ins] <= SRAI;
-              endcase
-            end
-          endcase
-          operand_1_rdy[empty_ins] <= 0;
-          operand_2_rdy[empty_ins] <= 1;
-          operand_1_flag <= 1;
-          operand_2_flag <= 0;
-          operand_1_reg <= new_ins[19:15];
-          if (new_ins[14:12] == 3'b001 || new_ins[14:12] == 3'b101) begin
-            operand_2[empty_ins] <= new_ins[24:20];
-          end else begin
-            operand_2[empty_ins] <= {{20{new_ins[31]}}, new_ins[31:20]};
-          end
-        end
-        7'b0110011: begin
-          //R
-          case (new_ins[14:12])
-            3'b000: begin
-              case (new_ins[31:25])
-                7'b0000000: op_type[empty_ins] <= ADD;
-                7'b0100000: op_type[empty_ins] <= SUB;
-              endcase
-            end
-            3'b001: op_type[empty_ins] <= SLL;
-            3'b010: op_type[empty_ins] <= SLT;
-            3'b011: op_type[empty_ins] <= SLTU;
-            3'b100: op_type[empty_ins] <= XOR;
-            3'b101: begin
-              case (new_ins[31:25])
-                7'b0000000: op_type[empty_ins] <= SRL;
-                7'b0100000: op_type[empty_ins] <= SRA;
-              endcase
-            end
-            3'b110: op_type[empty_ins] <= OR;
-            3'b111: op_type[empty_ins] <= AND;
-          endcase
-          operand_1_rdy[empty_ins] <= 0;
-          operand_2_rdy[empty_ins] <= 0;
-          operand_1_flag <= 1;
-          operand_2_flag <= 1;
-          operand_1_reg <= new_ins[19:15];
-          operand_2_reg <= new_ins[24:20];
-        end
-      endcase
-    end else begin
-      rename_need <= 0;
-    end
-    //之后是根据CDB广播完成更新
-    if (rs_update_flag) begin
+    if (rst) begin
+      rename_need  <= 0;
+      ls_mission   <= 0;
+      alu1_mission <= 0;
+      alu2_mission <= 0;
       for (i = 0; i < RSSIZE; i = i + 1) begin
-        if (busy[i] && (!rename_finish || i != rename_finish_id)) begin
-          if (!operand_1_rdy[i] && operand_1_ins[i] == rs_commit_rename) begin
-            operand_1_rdy[i] <= 1;
-            operand_1[i] <= rs_value;
-          end
-          if (!operand_2_rdy[i] && operand_2_ins[i] == rs_commit_rename) begin
-            operand_2_rdy[i] <= 1;
-            operand_2[i] <= rs_value;
-          end
-        end
+        busy[i] <= 0;
       end
-      if (rename_finish) begin
-        if (operand_1_busy && operand_1_rename == rs_commit_rename) begin
-          operand_1_rdy[rename_finish_id] <= 1;
-          operand_1[rename_finish_id] <= rs_value;
+    end else
+    if (!rdy) begin
+
+    end else begin
+      if (rs_flush) begin
+        rename_need  <= 0;
+        ls_mission   <= 0;
+        alu1_mission <= 0;
+        alu2_mission <= 0;
+        for (i = 0; i < RSSIZE; i = i + 1) begin
+          busy[i] <= 0;
         end
-        if (operand_2_busy && operand_2_rename == rs_commit_rename) begin
-          operand_2_rdy[rename_finish_id] <= 1;
-          operand_2[rename_finish_id] <= rs_value;
+      end else begin
+        if (rename_finish) begin
+          //上周期询问指令被送回来
+          if (operand_1_busy) begin
+            operand_1_ins[rename_finish_id] <= operand_1_rename;
+          end else begin
+            operand_1[rename_finish_id] <= operand_1_data_from_reg;
+            operand_1_rdy[rename_finish_id] <= 1;
+          end
+          if (!operand_2_rdy[rename_finish_id]) begin
+            if (operand_2_busy) begin
+              operand_2_ins[rename_finish_id] <= operand_2_rename;
+            end else begin
+              operand_2[rename_finish_id] <= operand_2_data_from_reg;
+              operand_2_rdy[rename_finish_id] <= 1;
+            end
+          end
+        end
+        if (new_ins_flag) begin
+          busy[empty_ins] <= 1;
+          rename_need <= 1;
+          rename_need_id <= empty_ins;
+          new_ins_rd_rename <= rename;
+          new_ins_rd <= rename_reg;
+          rob_rnm[empty_ins] <= rename;
+          //下一步是分case对指令进行具体解析，更新其信息，并向register同时传达重命名信息和询问所需寄存器
+          //LUI、JAL、AUIPC已处理完,只需处理剩下的
+          case (new_ins[6:0])
+            7'b1100111: begin
+              //JALR
+              op_type[empty_ins] <= JALR;
+              operand_1_rdy[empty_ins] <= 0;
+              operand_2_rdy[empty_ins] <= 1;
+              operand_2[empty_ins] <= {{20{new_ins[31]}}, new_ins[31:20]};
+              operand_1_flag <= 1;
+              operand_2_flag <= 0;
+              operand_1_reg <= new_ins[19:15];
+              op_is_ls[empty_ins] <= 0;
+            end
+            7'b1100011: begin
+              //Branch
+              case (new_ins[14:12])
+                3'b000: op_type[empty_ins] <= BEQ;
+                3'b001: op_type[empty_ins] <= BNE;
+                3'b100: op_type[empty_ins] <= BLT;
+                3'b101: op_type[empty_ins] <= BGE;
+                3'b110: op_type[empty_ins] <= BLTU;
+                3'b111: op_type[empty_ins] <= BGEU;
+              endcase
+              operand_1_rdy[empty_ins] <= 0;
+              operand_2_rdy[empty_ins] <= 0;
+              operand_1_flag <= 1;
+              operand_2_flag <= 1;
+              operand_1_reg <= new_ins[19:15];
+              operand_2_reg <= new_ins[24:20];
+              op_is_ls[empty_ins] <= 0;
+            end
+            7'b0000011: begin
+              //load 
+              load_store_addr_offset[empty_ins] <= {{20{new_ins[31]}}, new_ins[31:20]};
+              case (new_ins[14:12])
+                3'b000: op_type[empty_ins] <= LB;
+                3'b001: op_type[empty_ins] <= LH;
+                3'b010: op_type[empty_ins] <= LW;
+                3'b100: op_type[empty_ins] <= LBU;
+                3'b101: op_type[empty_ins] <= LHU;
+              endcase
+              operand_1_rdy[empty_ins] <= 0;
+              operand_2_rdy[empty_ins] <= 1;
+              operand_1_flag <= 1;
+              operand_2_flag <= 0;
+              operand_1_reg <= new_ins[19:15];
+              op_is_ls[empty_ins] <= 1;
+            end
+            7'b0100011: begin
+              //store
+              load_store_addr_offset[empty_ins] <= {
+                {20{new_ins[31]}}, new_ins[31:25], new_ins[11:7]
+              };
+              case (new_ins[14:12])
+                3'b000: op_type[empty_ins] <= SB;
+                3'b001: op_type[empty_ins] <= SH;
+                3'b010: op_type[empty_ins] <= SW;
+              endcase
+              operand_1_rdy[empty_ins] <= 0;
+              operand_2_rdy[empty_ins] <= 0;
+              operand_1_flag <= 1;
+              operand_2_flag <= 1;
+              operand_1_reg <= new_ins[19:15];
+              operand_2_reg <= new_ins[24:20];
+              op_is_ls[empty_ins] <= 1;
+            end
+            7'b0010011: begin
+              //I
+              case (new_ins[14:12])
+                3'b000: op_type[empty_ins] <= ADDI;
+                3'b010: op_type[empty_ins] <= SLTI;
+                3'b011: op_type[empty_ins] <= SLTIU;
+                3'b100: op_type[empty_ins] <= XORI;
+                3'b110: op_type[empty_ins] <= ORI;
+                3'b111: op_type[empty_ins] <= ANDI;
+                3'b001: op_type[empty_ins] <= SLLI;
+                3'b101: begin
+                  case (new_ins[31:25])
+                    7'b0000000: op_type[empty_ins] <= SRLI;
+                    7'b0100000: op_type[empty_ins] <= SRAI;
+                  endcase
+                end
+              endcase
+              operand_1_rdy[empty_ins] <= 0;
+              operand_2_rdy[empty_ins] <= 1;
+              operand_1_flag <= 1;
+              operand_2_flag <= 0;
+              operand_1_reg <= new_ins[19:15];
+              op_is_ls[empty_ins] <= 0;
+              if (new_ins[14:12] == 3'b001 || new_ins[14:12] == 3'b101) begin
+                operand_2[empty_ins] <= new_ins[24:20];
+              end else begin
+                operand_2[empty_ins] <= {{20{new_ins[31]}}, new_ins[31:20]};
+              end
+            end
+            7'b0110011: begin
+              //R
+              case (new_ins[14:12])
+                3'b000: begin
+                  case (new_ins[31:25])
+                    7'b0000000: op_type[empty_ins] <= ADD;
+                    7'b0100000: op_type[empty_ins] <= SUB;
+                  endcase
+                end
+                3'b001: op_type[empty_ins] <= SLL;
+                3'b010: op_type[empty_ins] <= SLT;
+                3'b011: op_type[empty_ins] <= SLTU;
+                3'b100: op_type[empty_ins] <= XOR;
+                3'b101: begin
+                  case (new_ins[31:25])
+                    7'b0000000: op_type[empty_ins] <= SRL;
+                    7'b0100000: op_type[empty_ins] <= SRA;
+                  endcase
+                end
+                3'b110: op_type[empty_ins] <= OR;
+                3'b111: op_type[empty_ins] <= AND;
+              endcase
+              operand_1_rdy[empty_ins] <= 0;
+              operand_2_rdy[empty_ins] <= 0;
+              operand_1_flag <= 1;
+              operand_2_flag <= 1;
+              operand_1_reg <= new_ins[19:15];
+              operand_2_reg <= new_ins[24:20];
+              op_is_ls[empty_ins] <= 0;
+            end
+          endcase
+        end else begin
+          rename_need <= 0;
+        end
+        //之后是根据CDB广播完成更新
+        if (rs_update_flag) begin
+          for (i = 0; i < RSSIZE; i = i + 1) begin
+            if (busy[i] && (!rename_finish || i != rename_finish_id)) begin
+              if (!operand_1_rdy[i] && operand_1_ins[i] == rs_commit_rename) begin
+                operand_1_rdy[i] <= 1;
+                operand_1[i] <= rs_value;
+              end
+              if (!operand_2_rdy[i] && operand_2_ins[i] == rs_commit_rename) begin
+                operand_2_rdy[i] <= 1;
+                operand_2[i] <= rs_value;
+              end
+            end
+          end
+          if (rename_finish) begin
+            if (operand_1_busy && operand_1_rename == rs_commit_rename) begin
+              operand_1_rdy[rename_finish_id] <= 1;
+              operand_1[rename_finish_id] <= rs_value;
+            end
+            if (operand_2_busy && operand_2_rename == rs_commit_rename) begin
+              operand_2_rdy[rename_finish_id] <= 1;
+              operand_2[rename_finish_id] <= rs_value;
+            end
+          end
+
+        end
+        //将可执行的语句送入ALU
+        if (ready1_found) begin
+          alu1_mission <= 1;
+          alu1_op_type <= op_type[ready1_ins];
+          alu1_rs1 <= operand_1[ready1_ins];
+          alu1_rs2 <= operand_2[ready1_ins];
+          alu1_rob_dest <= rob_rnm[ready1_ins];
+          busy[ready1_ins] <= 0;
+        end else begin
+          alu1_mission <= 0;
+        end
+        if (ready2_found) begin
+          alu2_mission <= 1;
+          alu2_op_type <= op_type[ready2_ins];
+          alu2_rs1 <= operand_1[ready2_ins];
+          alu2_rs2 <= operand_2[ready2_ins];
+          alu2_rob_dest <= rob_rnm[ready2_ins];
+          busy[ready2_ins] <= 0;
+        end else begin
+          alu2_mission <= 0;
+        end
+        //将可执行的LS送入LSB
+        if (ls_ready_found) begin
+          ls_mission <= 1;
+          ls_op_type <= op_type[ls_ready_ins];
+          ls_ins_rnm <= rob_rnm[ls_ready_ins];
+          ls_addr_offset <= load_store_addr_offset[ls_ready_ins];
+          ls_ins_rs1 <= operand_1[ls_ready_ins];
+          store_ins_rs2 <= operand_2[ls_ready_ins];
+          busy[ls_ready_ins] <= 0;
+        end else begin
+          ls_mission <= 0;
         end
       end
 
     end
-    //将可执行的语句送入ALU
-    if (ready1_found) begin
-      alu1_mission <= 1;
-      alu1_op_type <= op_type[ready1_ins];
-      alu1_rs1 <= operand_1[ready1_ins];
-      alu1_rs2 <= operand_2[ready1_ins];
-      alu1_rob_dest <= rob_rnm[ready1_ins];
-      busy[ready1_ins] <= 0;
-    end
-    if (ready2_found) begin
-      alu2_mission <= 1;
-      alu2_op_type <= op_type[ready2_ins];
-      alu2_rs1 <= operand_1[ready2_ins];
-      alu2_rs2 <= operand_2[ready2_ins];
-      alu2_rob_dest <= rob_rnm[ready2_ins];
-      busy[ready2_ins] <= 0;
-    end
+
   end
 
 endmodule  //reservation_station
