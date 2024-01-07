@@ -12,16 +12,19 @@ module instruction_fetcher (
     output reg [31:0] ins_addr,
     //Predictor
     output reg ask_predictor,
+    output reg [31:0] ask_ins_addr,
     output reg [31:0] jump_addr,
     output reg [31:0] next_addr,
     input wire jump,
     input wire predictor_sgn_rdy,
-    input wire predictor_full,  //上一个分支指令没提交则卡住 
+    input wire predictor_full,  //已经有四个分支指令没提交则卡住 
     input wire if_flush,
     input wire [31:0] addr_from_predictor,
     //CDB
     input wire jalr_commit,
-    input wire jalr_addr,
+    input wire [31:0] jalr_addr,
+    //LSB
+    input wire lsb_full,
     //Rob
     input wire rob_full,
     output reg if_ins_launch_flag,
@@ -105,6 +108,7 @@ module instruction_fetcher (
             if (!predictor_full) begin
               status <= WAITING_FOR_PREDICTOR;
               ask_predictor <= 1;
+              ask_ins_addr <= now_pc;
               jump_addr <= now_pc+{{20{now_instruction[31]}},now_instruction[7],now_instruction[30:25],now_instruction[11:8]}<<1;
               next_addr <= now_pc + 4;
             end else begin
@@ -127,7 +131,7 @@ module instruction_fetcher (
           READY_FOR_LAUNCH: begin
             ins_asked <= 0;
             ask_predictor <= 0;
-            if (!rob_full) begin
+            if (!rob_full && !lsb_full) begin
               if_ins_launch_flag <= 1;
               if_ins <= now_instruction;
               if_ins_pc <= now_instruction_pc;
@@ -139,7 +143,7 @@ module instruction_fetcher (
           JALR_READY_FOR_LAUNCH: begin
             ins_asked <= 0;
             ask_predictor <= 0;
-            if (!rob_full) begin
+            if (!rob_full && !lsb_full) begin
               if_ins_launch_flag <= 1;
               if_ins <= now_instruction;
               if_ins_pc <= now_instruction_pc;

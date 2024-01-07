@@ -10,7 +10,7 @@ module register (
     //predictor
     input wire register_flush,
     //rs
-    output reg rename_finish_id,
+    output reg [3:0] rename_finish_id,
     output reg operand_1_busy,
     output reg operand_2_busy,
     output reg [3:0] operand_1_rename,

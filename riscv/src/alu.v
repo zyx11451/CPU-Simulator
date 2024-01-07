@@ -3,7 +3,6 @@ module alu (
     input wire rst,
     input wire rdy,
     //rs
-    output reg alu_busy,  //实际用不上应该
     input wire alu_mission,
     input wire [5:0] alu_op_type,
     input wire [31:0] alu_rs1,
@@ -14,6 +13,7 @@ module alu (
     output reg [3:0] dest,
     output reg [31:0] alu_out
 );
+  //没有需要多个周期的指令,因此不用busy
   parameter LUI = 1;
   parameter AUIPC = 2;
   parameter JAL = 3;

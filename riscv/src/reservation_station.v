@@ -8,14 +8,14 @@ module reservation_station (
     input wire [3:0] rename,
     input wire [4:0] rename_reg,
     //register
-    input wire rename_finish_id,
+    input wire rename_finish,
+    input wire [3:0] rename_finish_id,
     input wire operand_1_busy,
     input wire operand_2_busy,
     input wire [3:0] operand_1_rename,
     input wire [3:0] operand_2_rename,
     input wire [31:0] operand_1_data_from_reg,
     input wire [31:0] operand_2_data_from_reg,
-    input wire rename_finish,
     output reg rename_need,
     output reg [3:0] rename_need_id,
     output reg operand_1_flag,
@@ -38,13 +38,11 @@ module reservation_station (
     output reg [31:0] ls_ins_rs1,
     output reg [31:0] store_ins_rs2,
     //ALUs
-    input wire alu1_busy,
     output reg alu1_mission,  //是否向alu1传递新指令
     output reg [5:0] alu1_op_type,
     output reg [31:0] alu1_rs1,
     output reg [31:0] alu1_rs2,
     output reg [3:0] alu1_rob_dest,  //向rob中哪条指令更新value
-    input wire alu2_busy,
     output reg alu2_mission,
     output reg [5:0] alu2_op_type,
     output reg [31:0] alu2_rs1,

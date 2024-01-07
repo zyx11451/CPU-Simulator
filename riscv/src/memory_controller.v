@@ -4,10 +4,10 @@ module memory_controller (
     input wire rdy,
     //RAM
     input wire [7:0] mem_in,
-    output reg en_in,
     output reg [7:0] mem_write,
     output reg [31:0] addr,
-    output reg r_nw_out,  // read/write select (read: 1, write: 0)
+    output reg w_nr_out,  // read/write select (read: 0, write: 1)
+    input wire io_buffer_full,// todo
     //IC
     input wire ic_flag,
     input wire [31:0] ins_addr,
@@ -25,7 +25,6 @@ module memory_controller (
     output reg lsb_enable,
     output reg data_rdy  //L或S操作完成
 );
-  //todo 也写成状态机
   parameter NOTBUSY = 0;
   parameter DATA_READING = 1;
   parameter DATA_WRITING = 2;
@@ -43,10 +42,9 @@ module memory_controller (
       now_data_waiting <= 0;
       now_data_waiting <= 0;
       //
-      en_in <= 0;
       mem_write <= 0;
       addr <= 0;
-      r_nw_out <= 1;
+      w_nr_out <= 0;
       ins_rdy <= 0;
       ic_enable <= 1;
       ins <= 0;
@@ -68,13 +66,11 @@ module memory_controller (
               lsb_enable <= 0;
               status <= DATA_READING;
               data_stage <= 0;
-              en_in <= 1;
-              r_nw_out <= 1;
+              w_nr_out <= 0;
               addr <= data_addr;
             end else begin
               data_stage <= 1;
-              en_in <= 1;
-              r_nw_out <= 0;
+              w_nr_out <= 1;
               mem_write <= data_write[7:0];
               if (data_size == 0) begin
                 data_rdy <= 1;
@@ -104,18 +100,17 @@ module memory_controller (
             lsb_enable <= 0;
             status <= INS_READING;
             ins_reading_stage <= 0;
-            en_in <= 1;
-            r_nw_out <= 1;
+            w_nr_out <= 0;
             addr <= ins_addr;
           end else begin
             data_rdy <= 0;
             ic_enable <= 1;
             lsb_enable <= 1;
-            en_in <= 0;
+            w_nr_out <= 0;
           end
         end
         DATA_READING: begin
-          r_nw_out <= 1;
+          w_nr_out <= 0;
           ins_rdy  <= 0;
           case (data_stage)
             0: begin
@@ -143,18 +138,15 @@ module memory_controller (
               lsb_enable <= 0;
               ic_enable <= 0;
               status <= INS_READING;
-              en_in <= 1;
               addr <= ins_addr;
               ins_reading_stage <= 0;
             end else begin
               lsb_enable <= 1;
               ic_enable <= 1;
               status <= NOTBUSY;
-              en_in <= 0;
             end
           end else begin
             data_stage <= data_stage + 1;
-            en_in <= 1;
             addr <= addr + 1;
             lsb_enable <= 0;
             ic_enable <= 0;
@@ -162,9 +154,8 @@ module memory_controller (
           end
         end
         DATA_WRITING: begin
-          r_nw_out <= 0;
+          w_nr_out <= 1;
           ins_rdy <= 0;
-          en_in <= 1;
           lsb_enable <= 0;
           ic_enable <= 0;
           case (data_stage)
@@ -192,7 +183,7 @@ module memory_controller (
           end
         end
         INS_READING: begin
-          r_nw_out   <= 1;
+          w_nr_out   <= 0;
           data_rdy   <= 0;
           lsb_enable <= 0;
           ic_enable  <= 0;
@@ -212,7 +203,7 @@ module memory_controller (
           endcase
           if (ins_reading_stage == 3) begin
             ins_rdy <= 1;
-            en_in <= 0;
+            w_nr_out <= 0;
             ins_reading_stage <= 0;
             status <= NOTBUSY;
           end else begin

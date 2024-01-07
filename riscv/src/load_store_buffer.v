@@ -10,7 +10,7 @@ module load_store_buffer (
     output reg [3:0] load_finish_rename,
     output reg [31:0] ld_data,
     output reg store_finish,  //被送到LSB就算"finish"
-    output reg store_finish_rename,
+    output reg [3:0] store_finish_rename,
     //RS
     input wire ls_mission,
     input wire [3:0] ls_ins_rnm,
@@ -23,6 +23,8 @@ module load_store_buffer (
     input wire [3:0] lsb_commit_rename,
     //Predictor
     input wire lsb_flush,
+    //IF
+    output reg lsb_full,//满时停止指令发射
     //MC
     output reg lsb_flag,
     output reg lsb_r_nw,
@@ -34,7 +36,7 @@ module load_store_buffer (
     input wire lsb_enable,
     input wire data_rdy  //读或写完成
 );
-  parameter LSBSIZE = 24;  //应该绝对不会满
+  parameter LSBSIZE = 16;  //大于12即为满
   parameter LB = 11;
   parameter LH = 12;
   parameter LW = 13;
@@ -55,7 +57,8 @@ module load_store_buffer (
   reg [31:0] target_addr[LSBSIZE-1:0];
   reg [31:0] data[LSBSIZE-1:0];
   reg [2:0] status[LSBSIZE-1:0];//在Rob提交后，Store才可被真正执行，这是为了防止分支预测出问题时后面指令对内存造成影响
-  integer i, head, tail, rs_inf_update_ins;
+  reg [3:0] head,tail;
+  integer i,  rs_inf_update_ins,ins_cnt;
   //完全顺序
   //如果之前送进去的指令不为Sb,则要等待一个回合再尝试送S类指令。
   always @(*) begin
@@ -64,6 +67,10 @@ module load_store_buffer (
         if (rob_rnm[i] == ls_ins_rnm) rs_inf_update_ins = i;
       end
     end
+    if(tail >= head) ins_cnt = tail - head;
+    else ins_cnt = tail+16-head;
+    if(ins_cnt > 12) lsb_full = 1;
+    else lsb_full = 0; 
   end
   always @(posedge clk) begin
     if (rst) begin
@@ -135,21 +142,21 @@ module load_store_buffer (
               data_size[rs_inf_update_ins] <= 0;
               signed_not_unsigned[rs_inf_update_ins] <= 1;
               store_finish <= 1;
-              store_finish_rename <= i;
+              store_finish_rename <= rob_rnm[rs_inf_update_ins];
             end
             SH: begin
               load_not_store[rs_inf_update_ins] <= 0;
               data_size[rs_inf_update_ins] <= 1;
               signed_not_unsigned[rs_inf_update_ins] <= 1;
               store_finish <= 1;
-              store_finish_rename <= i;
+              store_finish_rename <= rob_rnm[rs_inf_update_ins];
             end
             SW: begin
               load_not_store[rs_inf_update_ins] <= 0;
               data_size[rs_inf_update_ins] <= 3;
               signed_not_unsigned[rs_inf_update_ins] <= 1;
               store_finish <= 1;
-              store_finish_rename <= i;
+              store_finish_rename <= rob_rnm[rs_inf_update_ins];
             end
           endcase
           target_addr[rs_inf_update_ins] <= ls_ins_rs1 + ls_addr_offset;

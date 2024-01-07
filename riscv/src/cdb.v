@@ -8,6 +8,7 @@ module cdb (
     input wire [3:0] commit_rename,
     input wire [4:0] commit_dest,
     input wire commit_is_jalr,
+    input wire [31:0] jalr_next_pc,
     input wire commit_is_branch,
     //rs
     output reg rs_update_flag,
@@ -52,15 +53,20 @@ module cdb (
           branch_commit = 0;
           jalr_commit = 0;
         end else begin
-          rs_update_flag = 0;
-          register_update_flag = 0;
-          lsb_update_flag = 0;
           if (commit_is_branch) begin
             branch_commit = 1;
             branch_jump   = commit_value[0];
+            rs_update_flag = 0;
+            register_update_flag = 0;
+            lsb_update_flag = 0;
           end else begin
             jalr_commit = 1;
             jalr_addr   = commit_value;
+            rs_update_flag = 0;
+            register_update_flag = 1;
+            register_commit_dest = commit_dest;
+            register_value = jalr_next_pc;
+            lsb_update_flag = 0;
           end
         end
       end else begin

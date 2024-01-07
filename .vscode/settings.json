@@ -1,4 +1,5 @@
 {
     "verilog.linting.linter": "iverilog",
-    "verilog.linting.path": ""
+    "verilog.linting.path": "",
+    "digital-ide.welcome.show": false
 }

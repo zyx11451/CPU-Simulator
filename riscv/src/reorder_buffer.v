@@ -37,6 +37,7 @@ module reorder_buffer (
     output reg [3:0] commit_rename,
     output reg [4:0] commit_dest,
     output reg commit_is_jalr,
+    output reg [31:0] jalr_next_pc,
     output reg commit_is_branch
 );
   parameter ROBSIZE = 16;
@@ -133,7 +134,11 @@ module reorder_buffer (
             //剩下的送入RS中
             if (if_ins[6:0] == BRANCH) is_branch[tail] <= 1;
             else is_branch[tail] <= 0;
-            if (if_ins[6:0] == JALR) is_jalr[tail] <= 1;
+            if (if_ins[6:0] == JALR) begin
+              //所有元件中最多只存在一个jalr
+              jalr_next_pc <= if_ins_pc + 4;
+              is_jalr[tail] <= 1;
+            end
             else is_jalr[tail] <= 0;
             if (if_ins[6:0] == LOAD || if_ins[6:0] == STORE) begin
               //L或S要保顺序,因此在ISSUE时通知LSB
