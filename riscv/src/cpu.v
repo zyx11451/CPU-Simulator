@@ -163,6 +163,8 @@ module cpu (
   wire [31:0] cdb_reg_register_commit_value;
   wire [3:0] cdb_reg_rename_of_commit_ins;
 
+  wire lsb_if_lsb_full;
+
   memory_controller MC (
       .clk(clk_in),
       .rst(rst_in),
@@ -224,6 +226,8 @@ module cpu (
       //cdb
       .jalr_commit(cdb_if_jalr_commit),
       .jalr_addr(cdb_if_jalr_addr),
+      //lsb
+      .lsb_full(lsb_if_lsb_full),
       //rob
       .rob_full(rob_if_rob_full),
       .if_ins_launch_flag(if_rob_if_ins_launch_flag),
@@ -376,6 +380,8 @@ module cpu (
       .lsb_commit_rename(cdb_lsb_lsb_commit_rename),
       //pre
       .lsb_flush(pre_lsb_lsb_flush),
+      //if
+      .lsb_full(lsb_if_lsb_full),
       //MC
       .lsb_flag(lsb_mc_lsb_flag),
       .lsb_r_nw(lsb_mc_lsb_r_nw),
