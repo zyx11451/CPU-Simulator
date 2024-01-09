@@ -1,15 +1,16 @@
 // RISCV32I CPU top module
 // port modification allowed for debugging purposes
-`include "memory_controller.v"
-`include "i_cache.v"
-`include "instruction_fetcher.v"
-`include "predictor.v"
-`include "reorder_buffer.v"
-`include "reservation_station.v"
-`include "load_store_buffer.v"
-`include "register.v"
-`include "cdb.v"
-`include "alu.v"
+//`include "memory_controller.v"
+//`include "i_cache.v"
+//`include "instruction_fetcher.v"
+//`include "predictor.v"
+//`include "reorder_buffer.v"
+//`include "reservation_station.v"
+//`include "load_store_buffer.v"
+//`include "register.v"
+//`include "cdb.v"
+//`include "alu.v"
+
 module cpu (
     input wire clk_in,  // system clock signal
     input wire rst_in,  // reset signal
@@ -132,6 +133,7 @@ module cpu (
   wire [4:0] rs_reg_operand_2_reg;
   wire [3:0] rs_reg_new_ins_rd_rename;
   wire [4:0] rs_reg_new_ins_rd;
+  wire rs_reg_rename_need_ins_is_simple;
 
   wire cdb_rs_rs_update_flag;
   wire [3:0] cdb_rs_rs_commit_rename;
@@ -164,6 +166,9 @@ module cpu (
   wire [3:0] cdb_reg_rename_of_commit_ins;
 
   wire lsb_if_lsb_full;
+
+  wire reg_rob_simple_ins_commit;
+  wire [3:0] reg_rob_simple_ins_rename;
 
   memory_controller MC (
       .clk(clk_in),
@@ -285,6 +290,9 @@ module cpu (
       .new_ins(lsb_rs_new_ins),
       .rename(lsb_rs_rename),
       .rename_reg(lsb_rs_rename_reg),
+      //reg
+      .simple_ins_commit(reg_rob_simple_ins_commit),
+      .simple_ins_commit_rename(reg_rob_simple_ins_rename),
       //alu1
       .alu1_finish(alu1_rob_alu1_finish),
       .alu1_dest(alu1_rob_alu1_dest),
@@ -323,6 +331,7 @@ module cpu (
       .operand_1_data_from_reg(reg_rs_operand_1_data_from_reg),
       .operand_2_data_from_reg(reg_rs_operand_2_data_from_reg),
       .rename_need(rs_reg_rename_need),
+      .rename_need_ins_is_simple(rs_reg_rename_need_ins_is_simple),
       .rename_need_id(rs_reg_rename_need_id),
       .operand_1_flag(rs_reg_operand_1_flag),
       .operand_2_flag(rs_reg_operand_2_flag),
@@ -404,6 +413,9 @@ module cpu (
       .rename_of_commit_ins(cdb_reg_rename_of_commit_ins),
       //pre
       .register_flush(pre_reg_register_flush),
+      //rob
+      .simple_ins_commit(reg_rob_simple_ins_commit),
+      .simple_ins_rename(reg_rob_simple_ins_rename),
       //rs
       .rename_finish_id(reg_rs_rename_finish_id),
       .operand_1_busy(reg_rs_operand_1_busy),
@@ -414,6 +426,7 @@ module cpu (
       .operand_2_data_from_reg(reg_rs_operand_2_data_from_reg),
       .rename_finish(reg_rs_rename_finish),
       .rename_need(rs_reg_rename_need),
+      .rename_need_ins_is_simple(rs_reg_rename_need_ins_is_simple),
       .rename_need_id(rs_reg_rename_need_id),
       .operand_1_flag(rs_reg_operand_1_flag),
       .operand_2_flag(rs_reg_operand_2_flag),

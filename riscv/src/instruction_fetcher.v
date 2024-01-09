@@ -84,13 +84,13 @@ module instruction_fetcher (
             if (ic_rdy) begin
               now_instruction <= ins;
               now_instruction_pc <= now_pc;
-              case (now_instruction[6:0])
+              case (ins[6:0])
                 `BRANCH: begin
                   status <= NEED_PREDICT;
                 end
                 `JAL: begin
                   status <= READY_FOR_LAUNCH;
-                  now_pc<=now_pc+{{12{now_instruction[31]}},now_instruction[19:12],now_instruction[20],now_instruction[30:21]}<<1;
+                  now_pc<= now_pc+ ({{12{ins[31]}},ins[19:12],ins[20],ins[30:21]}<<1);//此时now_instruction还没更新
                 end
                 `JALR: begin
                   status <= JALR_READY_FOR_LAUNCH;
@@ -109,7 +109,7 @@ module instruction_fetcher (
               status <= WAITING_FOR_PREDICTOR;
               ask_predictor <= 1;
               ask_ins_addr <= now_pc;
-              jump_addr <= now_pc+{{20{now_instruction[31]}},now_instruction[7],now_instruction[30:25],now_instruction[11:8]}<<1;
+              jump_addr <= now_pc+({{20{now_instruction[31]}},now_instruction[7],now_instruction[30:25],now_instruction[11:8]}<<1);
               next_addr <= now_pc + 4;
             end else begin
               ask_predictor <= 0;
@@ -122,7 +122,7 @@ module instruction_fetcher (
             if (predictor_sgn_rdy) begin
               status <= READY_FOR_LAUNCH;
               if (jump) begin
-                now_pc <= now_pc+{{12{now_instruction[31]}},now_instruction[19:12],now_instruction[20],now_instruction[30:21]}<<1;
+                now_pc <= now_pc+({{12{now_instruction[31]}},now_instruction[19:12],now_instruction[20],now_instruction[30:21]}<<1);
               end else begin
                 now_pc <= now_pc + 4;
               end

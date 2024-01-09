@@ -22,6 +22,9 @@ module reorder_buffer (
     output reg [31:0] new_ins,
     output reg [3:0] rename,
     output reg [4:0] rename_reg,
+    //reg
+    input wire simple_ins_commit,
+    input wire [3:0] simple_ins_commit_rename,
     //ALUs
     input wire alu1_finish,
     input wire [3:0] alu1_dest,
@@ -53,17 +56,17 @@ module reorder_buffer (
   parameter JALR = 7'b1100111;
   parameter BRANCH = 7'b1100011;
   reg [3:0] rob_id[ROBSIZE-1:0];
-  reg [3:0] head ;
-  reg [3:0] tail ;
+  reg [3:0] head;
+  reg [3:0] tail;
   reg [1:0] status[ROBSIZE-1:0];
   reg [4:0] destination[ROBSIZE-1:0];
   reg [31:0] value[ROBSIZE-1:0];
   reg is_branch[ROBSIZE-1:0];
   reg is_jalr[ROBSIZE-1:0];
-  reg tail_less_than_head ;
-  integer ins_cnt ;  //记录指令个数,判断空或满
+  reg tail_less_than_head;
+  integer ins_cnt;  //记录指令个数,判断空或满
   always @(*) begin
-    if (tail_less_than_head) ins_cnt = tail - head;
+    if (!tail_less_than_head) ins_cnt = tail - head;
     else begin
       ins_cnt = tail + 16 - head;
     end
@@ -78,7 +81,8 @@ module reorder_buffer (
       new_ls_ins_flag <= 0;
       new_ins_flag <= 0;
       commit_flag <= 0;
-    end else if (!rdy) begin
+    end else
+    if (!rdy) begin
 
     end else begin
       if (rob_flush) begin
@@ -106,6 +110,9 @@ module reorder_buffer (
           status[load_finish_rename] <= WRITE;
           value[load_finish_rename]  <= ld_data;
         end
+        if(simple_ins_commit) begin
+          status[simple_ins_commit_rename] <= WRITE;
+        end
         //指令提交
         if (ins_cnt != 0 && status[head] == WRITE) begin
           head <= head + 1;
@@ -127,30 +134,25 @@ module reorder_buffer (
               JAL: value[tail] <= if_ins_pc + 4;
               default: value[tail] <= if_ins[31:12] << 12 + if_ins_pc;
             endcase
-            status[tail] <= WRITE;
-            new_ins_flag <= 0;
-            new_ls_ins_flag <= 0;
-          end else begin
-            //剩下的送入RS中
-            if (if_ins[6:0] == BRANCH) is_branch[tail] <= 1;
-            else is_branch[tail] <= 0;
-            if (if_ins[6:0] == JALR) begin
-              //所有元件中最多只存在一个jalr
-              jalr_next_pc <= if_ins_pc + 4;
-              is_jalr[tail] <= 1;
-            end
-            else is_jalr[tail] <= 0;
-            if (if_ins[6:0] == LOAD || if_ins[6:0] == STORE) begin
-              //L或S要保顺序,因此在ISSUE时通知LSB
-              new_ls_ins_flag <= 1;
-              new_ls_ins_rnm  <= tail;
-            end else new_ls_ins_flag <= 0;
-            new_ins_flag <= 1;
-            new_ins <= if_ins;
-            rename_reg <= if_ins[11:7];
-            rename <= tail;
-            status[tail] <= ISSUE;
           end
+          //送入RS中
+          if (if_ins[6:0] == BRANCH) is_branch[tail] <= 1;
+          else is_branch[tail] <= 0;
+          if (if_ins[6:0] == JALR) begin
+            //所有元件中最多只存在一个jalr
+            jalr_next_pc  <= if_ins_pc + 4;
+            is_jalr[tail] <= 1;
+          end else is_jalr[tail] <= 0;
+          if (if_ins[6:0] == LOAD || if_ins[6:0] == STORE) begin
+            //L或S要保顺序,因此在ISSUE时通知LSB
+            new_ls_ins_flag <= 1;
+            new_ls_ins_rnm  <= tail;
+          end else new_ls_ins_flag <= 0;
+          new_ins_flag <= 1;
+          new_ins <= if_ins;
+          rename_reg <= if_ins[11:7];
+          rename <= tail;
+          status[tail] <= ISSUE;
           tail <= tail + 1;
           if (tail == ROBSIZE - 1) tail_less_than_head <= 1;
         end else begin

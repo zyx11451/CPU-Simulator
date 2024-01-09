@@ -7,7 +7,7 @@ module memory_controller (
     output reg [7:0] mem_write,
     output reg [31:0] addr,
     output reg w_nr_out,  // read/write select (read: 0, write: 1)
-    input wire io_buffer_full,// todo
+    input wire io_buffer_full,  // todo
     //IC
     input wire ic_flag,
     input wire [31:0] ins_addr,
@@ -25,13 +25,14 @@ module memory_controller (
     output reg lsb_enable,
     output reg data_rdy  //L或S操作完成
 );
+  //好像隔一个周期才能知道读取的东西（1开始mc接受，1末发送,2开始ram处理，2结束，3开始mc收到，3末mc发送）
   parameter NOTBUSY = 0;
   parameter DATA_READING = 1;
   parameter DATA_WRITING = 2;
   parameter INS_READING = 3;
   reg [1:0] status;
-  reg [2:0] ins_reading_stage ;  //下一个周期接收到的是第几节指令,5为接收完成
-  reg [2:0] data_stage ;
+  reg [2:0] ins_reading_stage;  //下一个周期接收到的是第几节指令
+  reg [2:0] data_stage;
   reg now_ins_waiting;  //当同时或隔一个周期接到lsb和ic的信号时,将ic的信号存至此处
   reg now_data_waiting;
   always @(posedge clk) begin
@@ -52,12 +53,14 @@ module memory_controller (
       lsb_enable <= 1;
       data_rdy <= 0;
       data_read <= 0;
-    end else if (!rdy) begin
+    end else
+    if (!rdy) begin
 
     end else begin
       case (status)
         NOTBUSY: begin
           ins_rdy <= 0;
+          w_nr_out <= 0;
           if (lsb_flag || now_data_waiting) begin
             if (now_data_waiting) now_data_waiting <= 0;
             if (lsb_r_nw) begin
@@ -66,29 +69,13 @@ module memory_controller (
               lsb_enable <= 0;
               status <= DATA_READING;
               data_stage <= 0;
-              w_nr_out <= 0;
               addr <= data_addr;
             end else begin
-              data_stage <= 1;
-              w_nr_out <= 1;
-              mem_write <= data_write[7:0];
-              if (data_size == 0) begin
-                data_rdy <= 1;
-                status   <= NOTBUSY;
-                if (!now_ins_waiting && !ic_flag) begin
-                  //本周期完成后无任务,下一个周期可以接新任务
-                  lsb_enable <= 1;
-                  ic_enable  <= 1;
-                end else begin
-                  ic_enable  <= 0;
-                  lsb_enable <= 0;
-                end
-              end else begin
-                status <= DATA_WRITING;
-                data_rdy <= 0;
-                ic_enable <= 0;
-                lsb_enable <= 0;
-              end
+              data_stage <= 0;
+              status <= DATA_WRITING;
+              data_rdy <= 0;
+              ic_enable <= 0;
+              lsb_enable <= 0;
             end
             if (ic_flag) begin
               now_ins_waiting <= 1;
@@ -100,33 +87,31 @@ module memory_controller (
             lsb_enable <= 0;
             status <= INS_READING;
             ins_reading_stage <= 0;
-            w_nr_out <= 0;
             addr <= ins_addr;
           end else begin
-            data_rdy <= 0;
-            ic_enable <= 1;
+            data_rdy   <= 0;
+            ic_enable  <= 1;
             lsb_enable <= 1;
-            w_nr_out <= 0;
           end
         end
         DATA_READING: begin
           w_nr_out <= 0;
           ins_rdy  <= 0;
           case (data_stage)
-            0: begin
+            1: begin
               data_read[7:0] <= mem_in;
             end
-            1: begin
+            2: begin
               data_read[15:8] <= mem_in;
             end
-            2: begin
+            3: begin
               data_read[23:16] <= mem_in;
             end
-            3: begin
+            4: begin
               data_read[31:24] <= mem_in;
             end
           endcase
-          if (data_stage == data_size) begin
+          if (data_stage == data_size + 1) begin
             data_rdy <= 1;
             if (load_sign) begin
               if (data_size == 0) data_read[31:8] <= {24{mem_in[7]}};
@@ -159,6 +144,9 @@ module memory_controller (
           lsb_enable <= 0;
           ic_enable <= 0;
           case (data_stage)
+            0: begin
+              mem_write <= data_write[7:0];
+            end
             1: begin
               mem_write <= data_write[15:8];
             end
@@ -188,20 +176,20 @@ module memory_controller (
           lsb_enable <= 0;
           ic_enable  <= 0;
           case (ins_reading_stage)
-            0: begin
+            1: begin
               ins[7:0] <= mem_in;
             end
-            1: begin
+            2: begin
               ins[15:8] <= mem_in;
             end
-            2: begin
+            3: begin
               ins[23:16] <= mem_in;
             end
-            3: begin
+            4: begin
               ins[31:24] <= mem_in;
             end
           endcase
-          if (ins_reading_stage == 3) begin
+          if (ins_reading_stage == 4) begin
             ins_rdy <= 1;
             w_nr_out <= 0;
             ins_reading_stage <= 0;

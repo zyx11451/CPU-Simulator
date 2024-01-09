@@ -17,6 +17,7 @@ module reservation_station (
     input wire [31:0] operand_1_data_from_reg,
     input wire [31:0] operand_2_data_from_reg,
     output reg rename_need,
+    output reg rename_need_ins_is_simple,
     output reg [3:0] rename_need_id,
     output reg operand_1_flag,
     output reg operand_2_flag,
@@ -114,7 +115,7 @@ module reservation_station (
     for (i = 0; i < RSSIZE; i = i + 1) begin
       ready1_found = 0;
       ready2_found = 0;
-      ls_ready_ins = 0;
+      ls_ready_found = 0;
       if (!busy[i]) empty_ins = i;
       else if (operand_1_rdy[i] && operand_2_rdy[i]) begin
         if (op_is_ls[i]) begin
@@ -158,6 +159,7 @@ module reservation_station (
       end else begin
         if (rename_finish) begin
           //上周期询问指令被送回来
+          //简单指令不会被送回来
           if (operand_1_busy) begin
             operand_1_ins[rename_finish_id] <= operand_1_rename;
           end else begin
@@ -174,15 +176,31 @@ module reservation_station (
           end
         end
         if (new_ins_flag) begin
-          busy[empty_ins] <= 1;
           rename_need <= 1;
           rename_need_id <= empty_ins;
           new_ins_rd_rename <= rename;
           new_ins_rd <= rename_reg;
-          rob_rnm[empty_ins] <= rename;
           //下一步是分case对指令进行具体解析，更新其信息，并向register同时传达重命名信息和询问所需寄存器
           //LUI、JAL、AUIPC已处理完,只需处理剩下的
           case (new_ins[6:0])
+            7'b0110111: begin
+              //LUI
+              rename_need_ins_is_simple <= 1;
+              operand_1_flag <= 0;
+              operand_2_flag <= 0;
+            end
+            7'b0010111: begin
+              //AUIPC
+              rename_need_ins_is_simple <= 1;
+              operand_1_flag <= 0;
+              operand_2_flag <= 0;
+            end
+            7'b1101111: begin
+              //JAL
+              rename_need_ins_is_simple <= 1;
+              operand_1_flag <= 0;
+              operand_2_flag <= 0;
+            end
             7'b1100111: begin
               //JALR
               op_type[empty_ins] <= JALR;
@@ -193,6 +211,9 @@ module reservation_station (
               operand_2_flag <= 0;
               operand_1_reg <= new_ins[19:15];
               op_is_ls[empty_ins] <= 0;
+              busy[empty_ins] <= 1;
+              rob_rnm[empty_ins] <= rename;
+              rename_need_ins_is_simple <= 0;
             end
             7'b1100011: begin
               //Branch
@@ -211,6 +232,9 @@ module reservation_station (
               operand_1_reg <= new_ins[19:15];
               operand_2_reg <= new_ins[24:20];
               op_is_ls[empty_ins] <= 0;
+              busy[empty_ins] <= 1;
+              rob_rnm[empty_ins] <= rename;
+              rename_need_ins_is_simple <= 0;
             end
             7'b0000011: begin
               //load 
@@ -228,6 +252,9 @@ module reservation_station (
               operand_2_flag <= 0;
               operand_1_reg <= new_ins[19:15];
               op_is_ls[empty_ins] <= 1;
+              busy[empty_ins] <= 1;
+              rob_rnm[empty_ins] <= rename;
+              rename_need_ins_is_simple <= 0;
             end
             7'b0100011: begin
               //store
@@ -246,6 +273,9 @@ module reservation_station (
               operand_1_reg <= new_ins[19:15];
               operand_2_reg <= new_ins[24:20];
               op_is_ls[empty_ins] <= 1;
+              busy[empty_ins] <= 1;
+              rob_rnm[empty_ins] <= rename;
+              rename_need_ins_is_simple <= 0;
             end
             7'b0010011: begin
               //I
@@ -275,6 +305,9 @@ module reservation_station (
               end else begin
                 operand_2[empty_ins] <= {{20{new_ins[31]}}, new_ins[31:20]};
               end
+              busy[empty_ins] <= 1;
+              rob_rnm[empty_ins] <= rename;
+              rename_need_ins_is_simple <= 0;
             end
             7'b0110011: begin
               //R
@@ -305,6 +338,9 @@ module reservation_station (
               operand_1_reg <= new_ins[19:15];
               operand_2_reg <= new_ins[24:20];
               op_is_ls[empty_ins] <= 0;
+              busy[empty_ins] <= 1;
+              rob_rnm[empty_ins] <= rename;
+              rename_need_ins_is_simple <= 0;
             end
           endcase
         end else begin
