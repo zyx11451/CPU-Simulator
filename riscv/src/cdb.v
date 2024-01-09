@@ -66,6 +66,7 @@ module cdb (
             register_update_flag = 1;
             register_commit_dest = commit_dest;
             register_value = jalr_next_pc;
+            rename_sent_to_register = commit_rename;
             lsb_update_flag = 0;
           end
         end

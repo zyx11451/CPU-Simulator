@@ -122,7 +122,7 @@ module instruction_fetcher (
             if (predictor_sgn_rdy) begin
               status <= READY_FOR_LAUNCH;
               if (jump) begin
-                now_pc <= now_pc+({{12{now_instruction[31]}},now_instruction[19:12],now_instruction[20],now_instruction[30:21]}<<1);
+                now_pc <= jump_addr;
               end else begin
                 now_pc <= now_pc + 4;
               end

@@ -58,6 +58,7 @@ module load_store_buffer (
   reg [31:0] data[LSBSIZE-1:0];
   reg [2:0] status[LSBSIZE-1:0];//在Rob提交后，Store才可被真正执行，这是为了防止分支预测出问题时后面指令对内存造成影响
   reg [3:0] head,tail;
+  reg [2:0] debug;
   integer i,  rs_inf_update_ins,ins_cnt;
   //完全顺序
   //如果之前送进去的指令不为Sb,则要等待一个回合再尝试送S类指令。
@@ -73,6 +74,7 @@ module load_store_buffer (
     else lsb_full = 0; 
   end
   always @(posedge clk) begin
+    debug <= status[head];
     if (rst) begin
       head <= 0;
       tail <= 0;

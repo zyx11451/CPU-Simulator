@@ -123,6 +123,8 @@ module reorder_buffer (
           commit_dest <= destination[head];
           commit_is_branch <= is_branch[head];
           commit_is_jalr <= is_jalr[head];
+        end else begin
+          commit_flag <= 0;
         end
         //新指令的处理
         if (if_ins_launch_flag) begin

@@ -145,6 +145,7 @@ module memory_controller (
           ic_enable <= 0;
           case (data_stage)
             0: begin
+              addr <= data_addr;
               mem_write <= data_write[7:0];
             end
             1: begin
@@ -163,7 +164,7 @@ module memory_controller (
             status <= NOTBUSY;
           end else begin
             data_rdy <= 0;
-            addr <= addr + 1;
+            if(data_stage != 0) addr <= addr + 1;
             data_stage <= data_stage + 1;
           end
           if (ic_flag) begin

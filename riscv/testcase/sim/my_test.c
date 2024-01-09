@@ -4,5 +4,5 @@
 
 int main()
 {
-    outl(1);
+    outl(5);
 }

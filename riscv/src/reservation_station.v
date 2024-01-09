@@ -111,6 +111,7 @@ module reservation_station (
       ls_ready_found,
       ls_ready_ins;
   //特判:CDB广播的指令恰巧被查询register信息刚送回来的指令所需要
+  //todo Branch指令不能重命名寄存器
   always @(*) begin
     for (i = 0; i < RSSIZE; i = i + 1) begin
       ready1_found = 0;

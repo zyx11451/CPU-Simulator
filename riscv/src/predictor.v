@@ -137,6 +137,8 @@ module predictor (
             lsb_flush <= 1;
             rob_flush <= 1;
             rs_flush <= 1;
+            cdb_flush <= 1;
+            register_flush <= 1;
             addr_to_if <= jump_addr[head];
             head <= 0;
             tail <= 0;
@@ -146,6 +148,8 @@ module predictor (
             lsb_flush <= 0;
             rob_flush <= 0;
             rs_flush  <= 0;
+            cdb_flush <= 0;
+            register_flush <= 0;
           end
         end else begin
           if (jump_judge[head_ins_ind] > 0)
@@ -171,6 +175,8 @@ module predictor (
         lsb_flush <= 0;
         rob_flush <= 0;
         rs_flush  <= 0;
+        cdb_flush <= 0;
+        register_flush <= 0;
       end
     end
 
