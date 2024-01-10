@@ -10,6 +10,7 @@ module cdb (
     input wire commit_is_jalr,
     input wire [31:0] jalr_next_pc,
     input wire commit_is_branch,
+    input wire commit_is_store,
     //rs
     output reg rs_update_flag,
     output reg [3:0] rs_commit_rename,
@@ -41,27 +42,29 @@ module cdb (
     end else begin
       if (commit_flag) begin
         if (!commit_is_branch && !commit_is_jalr) begin
-          rs_update_flag = 1;
-          rs_commit_rename = commit_rename;
-          rs_value = commit_value;
-          lsb_update_flag = 1;
-          lsb_commit_rename = commit_rename;
-          register_update_flag = 1;
-          register_commit_dest = commit_dest;
-          register_value = commit_value;
-          rename_sent_to_register = commit_rename;
+          if (!commit_is_store) begin
+            rs_update_flag = 1;
+            rs_commit_rename = commit_rename;
+            rs_value = commit_value;
+            register_update_flag = 1;
+            register_commit_dest = commit_dest;
+            register_value = commit_value;
+            rename_sent_to_register = commit_rename;
+          end
           branch_commit = 0;
           jalr_commit = 0;
+          lsb_update_flag = 1;
+          lsb_commit_rename = commit_rename;
         end else begin
           if (commit_is_branch) begin
             branch_commit = 1;
-            branch_jump   = commit_value[0];
+            branch_jump = commit_value[0];
             rs_update_flag = 0;
             register_update_flag = 0;
             lsb_update_flag = 0;
           end else begin
             jalr_commit = 1;
-            jalr_addr   = commit_value;
+            jalr_addr = commit_value;
             rs_update_flag = 0;
             register_update_flag = 1;
             register_commit_dest = commit_dest;

@@ -23,6 +23,7 @@ module register (
     output reg rename_finish,
     input wire rename_need,
     input wire rename_need_ins_is_simple,
+    input wire rename_need_ins_is_branch_or_store,
     input wire [3:0] rename_need_id,
     input wire operand_1_flag,
     input wire operand_2_flag,
@@ -32,11 +33,18 @@ module register (
     input wire [4:0] new_ins_rd
 );
   //特判:询问的寄存器本周期恰好被CDB广播
+  //0号寄存器不可更改
   reg [31:0] reg_value[31:0];
   reg reg_busy[31:0];
   reg [3:0] reg_rename[31:0];
+  reg [3:0] debug;
+  reg[31:0] debug1;
+  reg[31:0] debug2;
   integer i;
   always @(posedge clk) begin
+    debug <= reg_rename[13];
+    debug1 <= reg_value[13];
+    debug2 <= reg_value[0];
     if (rst) begin
       rename_finish <= 0;
       simple_ins_commit <= 0;
@@ -57,7 +65,8 @@ module register (
       if (register_update_flag) begin
         if (rename_of_commit_ins == reg_rename[register_commit_dest])
           reg_busy[register_commit_dest] <= 0;
-        reg_value[register_commit_dest] <= register_commit_value;
+        if(register_commit_dest != 0) reg_value[register_commit_dest] <= register_commit_value;
+        else reg_value[0] <= 0;
       end
       if (rename_need) begin
         if (rename_need_ins_is_simple) begin
@@ -97,10 +106,13 @@ module register (
               operand_2_data_from_reg <= reg_value[operand_2_reg];
             end
           end
+          if (!rename_need_ins_is_branch_or_store) begin
+            //分支指令那个位置不是rd,不需要重命名
+            reg_busy[new_ins_rd] <= 1;
+            reg_rename [new_ins_rd] <= new_ins_rd_rename;//理论上来讲后赋值会覆盖先赋值,如果出问题可改成特判
+            rename_finish_id <= rename_need_id;
+          end
 
-          reg_busy[new_ins_rd] <= 1;
-          reg_rename [new_ins_rd] <= new_ins_rd_rename;//理论上来讲后赋值会覆盖先赋值,如果出问题可改成特判
-          rename_finish_id <= rename_need_id;
         end
       end else begin
         rename_finish <= 0;

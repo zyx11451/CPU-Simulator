@@ -1,5 +1,5 @@
 #include "io.h"
-//input: 1 2 3 4
+//input: 
 
 
 int main()

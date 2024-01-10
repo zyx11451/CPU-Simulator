@@ -41,8 +41,10 @@ module reorder_buffer (
     output reg [4:0] commit_dest,
     output reg commit_is_jalr,
     output reg [31:0] jalr_next_pc,
-    output reg commit_is_branch
+    output reg commit_is_branch,
+    output reg commit_is_store
 );
+//todo store指令的提交会改寄存器内容
   parameter ROBSIZE = 16;
   parameter ISSUE = 2'b00;
   parameter EXEC = 2'b01;  //貌似不需要
@@ -63,6 +65,7 @@ module reorder_buffer (
   reg [31:0] value[ROBSIZE-1:0];
   reg is_branch[ROBSIZE-1:0];
   reg is_jalr[ROBSIZE-1:0];
+  reg is_store[ROBSIZE-1:0];
   reg tail_less_than_head;
   integer ins_cnt;  //记录指令个数,判断空或满
   always @(*) begin
@@ -123,6 +126,7 @@ module reorder_buffer (
           commit_dest <= destination[head];
           commit_is_branch <= is_branch[head];
           commit_is_jalr <= is_jalr[head];
+          commit_is_store <= is_store[head];
         end else begin
           commit_flag <= 0;
         end
@@ -145,6 +149,8 @@ module reorder_buffer (
             jalr_next_pc  <= if_ins_pc + 4;
             is_jalr[tail] <= 1;
           end else is_jalr[tail] <= 0;
+          if (if_ins[6:0] == STORE) is_store[tail] <= 1;
+          else is_store[tail] <= 0;
           if (if_ins[6:0] == LOAD || if_ins[6:0] == STORE) begin
             //L或S要保顺序,因此在ISSUE时通知LSB
             new_ls_ins_flag <= 1;

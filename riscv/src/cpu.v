@@ -116,6 +116,7 @@ module cpu (
   wire rob_cdb_commit_is_jalr;
   wire [31:0] rob_cdb_jalr_next_pc;
   wire rob_cdb_commit_is_branch;
+  wire rob_cdb_commit_is_store;
 
   wire reg_rs_rename_finish;
   wire [3:0] reg_rs_rename_finish_id;
@@ -134,6 +135,7 @@ module cpu (
   wire [3:0] rs_reg_new_ins_rd_rename;
   wire [4:0] rs_reg_new_ins_rd;
   wire rs_reg_rename_need_ins_is_simple;
+  wire rs_reg_rename_need_ins_is_branch_or_store;
 
   wire cdb_rs_rs_update_flag;
   wire [3:0] cdb_rs_rs_commit_rename;
@@ -310,7 +312,8 @@ module cpu (
       .commit_dest(rob_cdb_commit_dest),
       .commit_is_jalr(rob_cdb_commit_is_jalr),
       .jalr_next_pc(rob_cdb_jalr_next_pc),
-      .commit_is_branch(rob_cdb_commit_is_branch)
+      .commit_is_branch(rob_cdb_commit_is_branch),
+      .commit_is_store(rob_cdb_commit_is_store)
   );
   reservation_station RS (
       .clk(clk_in),
@@ -332,6 +335,7 @@ module cpu (
       .operand_2_data_from_reg(reg_rs_operand_2_data_from_reg),
       .rename_need(rs_reg_rename_need),
       .rename_need_ins_is_simple(rs_reg_rename_need_ins_is_simple),
+      .rename_need_ins_is_branch_or_store(rs_reg_rename_need_ins_is_branch_or_store),
       .rename_need_id(rs_reg_rename_need_id),
       .operand_1_flag(rs_reg_operand_1_flag),
       .operand_2_flag(rs_reg_operand_2_flag),
@@ -427,6 +431,7 @@ module cpu (
       .rename_finish(reg_rs_rename_finish),
       .rename_need(rs_reg_rename_need),
       .rename_need_ins_is_simple(rs_reg_rename_need_ins_is_simple),
+      .rename_need_ins_is_branch_or_store(rs_reg_rename_need_ins_is_branch_or_store),
       .rename_need_id(rs_reg_rename_need_id),
       .operand_1_flag(rs_reg_operand_1_flag),
       .operand_2_flag(rs_reg_operand_2_flag),
@@ -447,6 +452,7 @@ module cpu (
       .commit_is_jalr(rob_cdb_commit_is_jalr),
       .jalr_next_pc(rob_cdb_jalr_next_pc),
       .commit_is_branch(rob_cdb_commit_is_branch),
+      .commit_is_store(rob_cdb_commit_is_store),
       //rs
       .rs_update_flag(cdb_rs_rs_update_flag),
       .rs_commit_rename(cdb_rs_rs_commit_rename),

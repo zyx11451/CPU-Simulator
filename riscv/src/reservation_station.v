@@ -18,6 +18,7 @@ module reservation_station (
     input wire [31:0] operand_2_data_from_reg,
     output reg rename_need,
     output reg rename_need_ins_is_simple,
+    output reg rename_need_ins_is_branch_or_store,
     output reg [3:0] rename_need_id,
     output reg operand_1_flag,
     output reg operand_2_flag,
@@ -187,18 +188,21 @@ module reservation_station (
             7'b0110111: begin
               //LUI
               rename_need_ins_is_simple <= 1;
+              rename_need_ins_is_branch_or_store <= 0;
               operand_1_flag <= 0;
               operand_2_flag <= 0;
             end
             7'b0010111: begin
               //AUIPC
               rename_need_ins_is_simple <= 1;
+              rename_need_ins_is_branch_or_store <= 0;
               operand_1_flag <= 0;
               operand_2_flag <= 0;
             end
             7'b1101111: begin
               //JAL
               rename_need_ins_is_simple <= 1;
+              rename_need_ins_is_branch_or_store <= 0;
               operand_1_flag <= 0;
               operand_2_flag <= 0;
             end
@@ -215,6 +219,7 @@ module reservation_station (
               busy[empty_ins] <= 1;
               rob_rnm[empty_ins] <= rename;
               rename_need_ins_is_simple <= 0;
+              rename_need_ins_is_branch_or_store <= 0;
             end
             7'b1100011: begin
               //Branch
@@ -236,6 +241,7 @@ module reservation_station (
               busy[empty_ins] <= 1;
               rob_rnm[empty_ins] <= rename;
               rename_need_ins_is_simple <= 0;
+              rename_need_ins_is_branch_or_store <= 1;
             end
             7'b0000011: begin
               //load 
@@ -256,6 +262,7 @@ module reservation_station (
               busy[empty_ins] <= 1;
               rob_rnm[empty_ins] <= rename;
               rename_need_ins_is_simple <= 0;
+              rename_need_ins_is_branch_or_store <= 0;
             end
             7'b0100011: begin
               //store
@@ -277,6 +284,7 @@ module reservation_station (
               busy[empty_ins] <= 1;
               rob_rnm[empty_ins] <= rename;
               rename_need_ins_is_simple <= 0;
+              rename_need_ins_is_branch_or_store <= 1;
             end
             7'b0010011: begin
               //I
@@ -309,6 +317,7 @@ module reservation_station (
               busy[empty_ins] <= 1;
               rob_rnm[empty_ins] <= rename;
               rename_need_ins_is_simple <= 0;
+              rename_need_ins_is_branch_or_store <= 0;
             end
             7'b0110011: begin
               //R
@@ -342,6 +351,7 @@ module reservation_station (
               busy[empty_ins] <= 1;
               rob_rnm[empty_ins] <= rename;
               rename_need_ins_is_simple <= 0;
+              rename_need_ins_is_branch_or_store <= 0;
             end
           endcase
         end else begin
