@@ -97,6 +97,11 @@ module load_store_buffer (
         load_finish <= 0;
         store_finish <= 0;
         lsb_flag <= 0;
+        if (data_rdy && status[head] == EXEC) begin
+          //store data_rdy和flush同时的情况,此时应及时处理store
+          status[head] <= FINISH;
+          head <= (head + 1) % LSBSIZE;
+        end
       end else begin
         if (new_ls_ins_flag) begin
           rob_rnm[tail] <= new_ls_ins_rnm;
