@@ -138,7 +138,7 @@ module reorder_buffer (
             case (if_ins[6:0])
               LUI: value[tail] <= if_ins[31:12] << 12;
               JAL: value[tail] <= if_ins_pc + 4;
-              default: value[tail] <= if_ins[31:12] << 12 + if_ins_pc;
+              default: value[tail] <= (if_ins[31:12] << 12) + if_ins_pc;
             endcase
           end
           //送入RS中

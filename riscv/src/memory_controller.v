@@ -158,13 +158,13 @@ module memory_controller (
               mem_write <= data_write[31:24];
             end
           endcase
+          if(data_stage != 0) addr <= addr + 1;
           if (data_stage == data_size) begin
             data_rdy <= 1;
             data_stage <= 0;
             status <= NOTBUSY;
           end else begin
             data_rdy <= 0;
-            if(data_stage != 0) addr <= addr + 1;
             data_stage <= data_stage + 1;
           end
           if (ic_flag) begin

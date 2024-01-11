@@ -61,7 +61,8 @@ module instruction_fetcher (
         case (status)
           WAITING_FOR_INS: begin
             now_pc <= addr_from_predictor;
-            status <= WAITING_INS_AFTER_FLUSH;
+            if(!ic_rdy) status <= WAITING_INS_AFTER_FLUSH;
+            else status <= EMPTY;
           end
           default: begin
             now_pc <= addr_from_predictor;
