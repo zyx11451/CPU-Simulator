@@ -139,7 +139,7 @@ module memory_controller (
           end
         end
         DATA_WRITING: begin
-          w_nr_out <= 1;
+          
           ins_rdy <= 0;
           lsb_enable <= 0;
           ic_enable <= 0;
@@ -158,14 +158,17 @@ module memory_controller (
               mem_write <= data_write[31:24];
             end
           endcase
-          if(data_stage != 0) addr <= addr + 1;
-          if (data_stage == data_size) begin
+          if (data_stage == data_size+1) begin
+            w_nr_out <= 0;
             data_rdy <= 1;
             data_stage <= 0;
             status <= NOTBUSY;
+            addr <= 0;
           end else begin
+            w_nr_out <= 1;
             data_rdy <= 0;
             data_stage <= data_stage + 1;
+            if(data_stage != 0) addr <= addr + 1;
           end
           if (ic_flag) begin
             now_ins_waiting <= 1;
