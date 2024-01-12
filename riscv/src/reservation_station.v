@@ -100,6 +100,8 @@ module reservation_station (
   reg [3:0] rob_rnm[RSSIZE-1:0];  //记录的是来自Rob中哪条指令
   reg [31:0] load_store_addr_offset[RSSIZE-1:0];
   reg op_is_ls[RSSIZE-1:0];
+  reg ins_rename_finish[RSSIZE-1:0];
+  reg [31:0] debug2;
   integer
       i,
       ready1_found,
@@ -137,6 +139,7 @@ module reservation_station (
     end
   end
   always @(posedge clk) begin
+    debug2 <= operand_2[15];
     if (rst) begin
       rename_need  <= 0;
       ls_mission   <= 0;
@@ -156,6 +159,7 @@ module reservation_station (
         alu2_mission <= 0;
         for (i = 0; i < RSSIZE; i = i + 1) begin
           busy[i] <= 0;
+          ins_rename_finish[i] <= 0;
         end
       end else begin
         if (rename_finish) begin
@@ -175,6 +179,7 @@ module reservation_station (
               operand_2_rdy[rename_finish_id] <= 1;
             end
           end
+          ins_rename_finish[rename_finish_id] <= 1;
         end
         if (new_ins_flag) begin
           rename_need <= 1;
@@ -359,7 +364,7 @@ module reservation_station (
         //之后是根据CDB广播完成更新
         if (rs_update_flag) begin
           for (i = 0; i < RSSIZE; i = i + 1) begin
-            if (busy[i] && (!rename_finish || i != rename_finish_id)) begin
+            if (busy[i] && ins_rename_finish[i] && (!rename_finish || i != rename_finish_id)) begin
               if (!operand_1_rdy[i] && operand_1_ins[i] == rs_commit_rename) begin
                 operand_1_rdy[i] <= 1;
                 operand_1[i] <= rs_value;
@@ -390,6 +395,7 @@ module reservation_station (
           alu1_rs2 <= operand_2[ready1_ins];
           alu1_rob_dest <= rob_rnm[ready1_ins];
           busy[ready1_ins] <= 0;
+          ins_rename_finish[ready1_ins] <= 0;
         end else begin
           alu1_mission <= 0;
         end
@@ -400,6 +406,7 @@ module reservation_station (
           alu2_rs2 <= operand_2[ready2_ins];
           alu2_rob_dest <= rob_rnm[ready2_ins];
           busy[ready2_ins] <= 0;
+          ins_rename_finish[ready2_ins] <= 0;
         end else begin
           alu2_mission <= 0;
         end
@@ -412,6 +419,7 @@ module reservation_station (
           ls_ins_rs1 <= operand_1[ls_ready_ins];
           store_ins_rs2 <= operand_2[ls_ready_ins];
           busy[ls_ready_ins] <= 0;
+          ins_rename_finish[ls_ready_ins] <= 0;
         end else begin
           ls_mission <= 0;
         end

@@ -116,6 +116,9 @@ module memory_controller (
             if (load_sign) begin
               if (data_size == 0) data_read[31:8] <= {24{mem_in[7]}};
               else if (data_size == 1) data_read[31:16] <= {16{mem_in[7]}};
+            end else begin
+              if (data_size == 0) data_read[31:8] <= 0;
+              else if(data_size == 1) data_read[31:16] <= 0;
             end
             data_stage <= 0;
             if (now_ins_waiting || ic_flag) begin
