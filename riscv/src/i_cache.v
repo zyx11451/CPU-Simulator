@@ -25,19 +25,15 @@ module i_cache (
   reg [15:0] instruction_age[ICSIZE-1:0];  //0为未占用,指令年龄最小为1
   reg cache_miss;
   reg [1:0] status;
-  integer i, ins_to_be_replaced, max_age, has_empty;
+  integer i, ins_to_be_replaced, max_age, has_empty , hit_ins;
   always @(*) begin
     if (if_ins_asked) begin
       cache_miss = 1;
       for (i = 0; i < ICSIZE; i = i + 1) begin
         if (instruction_pc[i] == if_ins_addr && instruction_age[i] != 0) begin
           cache_miss = 0;
-          if_ins = instruction[i];
-          instruction_age[i] = 1;
-          instruction_pc[i] = if_ins_addr;
-        end else if (instruction_age[i] != 0) begin
-          instruction_age[i] = instruction_age[i] + 1;
-        end
+          hit_ins = i;
+        end 
       end
     end
     max_age   = 0;
@@ -78,9 +74,17 @@ module i_cache (
                 status <= WAITING_MC_ENABLE;
                 mc_ins_asked <= 0;
               end
+              for(i=0;i<ICSIZE;i=i+1)begin
+                if(instruction_age[i] != 0) instruction_age[i] <= instruction_age[i] + 1;
+              end
             end else begin
               if_ins_rdy   <= 1;
               mc_ins_asked <= 0;
+              if_ins <= instruction[hit_ins];
+              instruction_age[hit_ins] <= 1;
+              for(i=0;i<ICSIZE;i=i+1)begin
+                if(i != hit_ins && instruction_age[i] != 0) instruction_age[i] <= instruction_age[i] + 1;
+              end
             end
           end else begin
             if_ins_rdy   <= 0;

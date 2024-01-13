@@ -57,11 +57,9 @@ module predictor (
       for (i = 0; i < PREDICTOR_MEMORY_SIZE; i = i + 1) begin
         if (busy[i]) begin
           if (ins_pc[i] == now_ins_addr) begin
-            age[i] = 0;
             miss = 0;
             hit_ins = i;
           end else begin
-            age[i] = age[i] + 1;
             if (age[i] >= now_oldest_age) begin
               now_oldest_age = age[i];
               now_oldest_ins = i;
@@ -121,10 +119,17 @@ module predictor (
             jump <= 0;
             tail <= tail + 1;
             if (tail == 3) tail_less_than_head <= 1;
+            for(i=0;i<PREDICTOR_MEMORY_SIZE;i=i+1) begin
+              if(busy[i] && i!= replace_ins) age[i] <= age[i]+1;
+            end
           end else begin
             next_addr[tail]   <= next_addr_from_if;
             jump_addr[tail]   <= jump_addr_from_if;
             predict_ind[tail] <= hit_ins;
+            age[hit_ins] <= 0;
+            for(i=0;i<PREDICTOR_MEMORY_SIZE;i=i+1) begin
+              if(busy[i] && i!= hit_ins) age[i] <= age[i]+1;
+            end
             predictor_sgn_rdy <= 1;
             if (jump_judge[hit_ins] >= 2) begin
               predict_jump[tail] <= 1;
