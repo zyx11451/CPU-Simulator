@@ -59,7 +59,7 @@ module memory_controller (
     end else begin
       case (status)
         NOTBUSY: begin
-          ins_rdy <= 0;
+          ins_rdy  <= 0;
           w_nr_out <= 0;
           if (lsb_flag || now_data_waiting) begin
             if (now_data_waiting) now_data_waiting <= 0;
@@ -118,7 +118,7 @@ module memory_controller (
               else if (data_size == 1) data_read[31:16] <= {16{mem_in[7]}};
             end else begin
               if (data_size == 0) data_read[31:8] <= 0;
-              else if(data_size == 1) data_read[31:16] <= 0;
+              else if (data_size == 1) data_read[31:16] <= 0;
             end
             data_stage <= 0;
             if (now_ins_waiting || ic_flag) begin
@@ -142,40 +142,42 @@ module memory_controller (
           end
         end
         DATA_WRITING: begin
-          
-          ins_rdy <= 0;
-          lsb_enable <= 0;
-          ic_enable <= 0;
-          case (data_stage)
-            0: begin
-              addr <= data_addr;
-              mem_write <= data_write[7:0];
+          if (data_addr[17:16] != 2'b11 || ~io_buffer_full) begin
+            ins_rdy <= 0;
+            lsb_enable <= 0;
+            ic_enable <= 0;
+            case (data_stage)
+              0: begin
+                addr <= data_addr;
+                mem_write <= data_write[7:0];
+              end
+              1: begin
+                mem_write <= data_write[15:8];
+              end
+              2: begin
+                mem_write <= data_write[23:16];
+              end
+              3: begin
+                mem_write <= data_write[31:24];
+              end
+            endcase
+            if (data_stage == data_size + 1) begin
+              w_nr_out <= 0;
+              data_rdy <= 1;
+              data_stage <= 0;
+              status <= NOTBUSY;
+              addr <= 0;
+            end else begin
+              w_nr_out   <= 1;
+              data_rdy   <= 0;
+              data_stage <= data_stage + 1;
+              if (data_stage != 0) addr <= addr + 1;
             end
-            1: begin
-              mem_write <= data_write[15:8];
+            if (ic_flag) begin
+              now_ins_waiting <= 1;
             end
-            2: begin
-              mem_write <= data_write[23:16];
-            end
-            3: begin
-              mem_write <= data_write[31:24];
-            end
-          endcase
-          if (data_stage == data_size+1) begin
-            w_nr_out <= 0;
-            data_rdy <= 1;
-            data_stage <= 0;
-            status <= NOTBUSY;
-            addr <= 0;
-          end else begin
-            w_nr_out <= 1;
-            data_rdy <= 0;
-            data_stage <= data_stage + 1;
-            if(data_stage != 0) addr <= addr + 1;
           end
-          if (ic_flag) begin
-            now_ins_waiting <= 1;
-          end
+
         end
         INS_READING: begin
           w_nr_out   <= 0;
