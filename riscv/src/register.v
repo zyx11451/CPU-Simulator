@@ -71,7 +71,7 @@ module register (
     if (rst) begin
       rename_finish <= 0;
       simple_ins_commit <= 0;
-      for (i = 0; i < 32; ++i) begin
+      for (i = 0; i < 32; i=i+1) begin
         reg_busy[i]  <= 0;
         reg_value[i] <= 0;
       end
@@ -81,7 +81,7 @@ module register (
     end else begin
       if (register_flush) begin
         rename_finish <= 0;
-        for (i = 0; i < 32; ++i) begin
+        for (i = 0; i < 32; i=i+1) begin
           reg_busy[i] <= 0;
         end
       end else begin
@@ -133,7 +133,7 @@ module register (
             if (!rename_need_ins_is_branch_or_store) begin
               //分支指令那个位置不是rd,不需要重命名
               reg_busy[new_ins_rd] <= 1;
-              reg_rename [new_ins_rd] <= new_ins_rd_rename;//理论上来讲后赋值会覆盖先赋值,如果出问题可改成特判
+              reg_rename [new_ins_rd] <= new_ins_rd_rename;//理论上来讲后赋�?�会覆盖先赋�?,如果出问题可改成特判
             end
             rename_finish_id <= rename_need_id;
           end

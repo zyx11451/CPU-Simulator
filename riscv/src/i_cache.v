@@ -46,7 +46,7 @@ module i_cache (
       if (instruction_age[i] == 0) begin
         ins_to_be_replaced = i;
         has_empty = 1;
-      end
+      end 
       if (instruction_age[i] > max_age && !has_empty) begin
         ins_to_be_replaced = i;
         max_age = instruction_age[i];

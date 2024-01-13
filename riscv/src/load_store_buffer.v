@@ -24,7 +24,7 @@ module load_store_buffer (
     //Predictor
     input wire lsb_flush,
     //IF
-    output reg lsb_full,//满时停止指令发射
+    output reg lsb_full,  //满时停止指令发射
     //MC
     output reg lsb_flag,
     output reg lsb_r_nw,
@@ -57,25 +57,35 @@ module load_store_buffer (
   reg [31:0] target_addr[LSBSIZE-1:0];
   reg [31:0] data[LSBSIZE-1:0];
   reg [2:0] status[LSBSIZE-1:0];//在Rob提交后，Store才可被真正执行，这是为了防止分支预测出问题时后面指令对内存造成影响
-  reg [3:0] head,tail;
+  reg [3:0] head, tail;
   reg [2:0] debug;
   reg [3:0] debug1;
-  integer i,  rs_inf_update_ins,ins_cnt;
+  integer i, rs_inf_update_ins, ins_cnt;
   //完全顺序
   //如果之前送进去的指令不为Sb,则要等待一个回合再尝试送S类指令。
   always @(*) begin
     if (ls_mission) begin
-      for (i = head; i != tail; i = (i + 1) % LSBSIZE) begin
-        if (rob_rnm[i] == ls_ins_rnm) rs_inf_update_ins = i;
+      if (tail >= head) begin
+        for (i = 0; i < LSBSIZE; i = i + 1) begin
+          if (i >= head && i < tail) begin
+            if (rob_rnm[i] == ls_ins_rnm) rs_inf_update_ins = i;
+          end
+        end
+      end else begin
+        for (i = 0; i < LSBSIZE; i = i + 1) begin
+          if (i >= head || i < tail) begin
+            if (rob_rnm[i] == ls_ins_rnm) rs_inf_update_ins = i;
+          end
+        end
       end
     end
-    if(tail >= head) ins_cnt = tail - head;
-    else ins_cnt = tail+16-head;
-    if(ins_cnt > 12) lsb_full = 1;
-    else lsb_full = 0; 
+    if (tail >= head) ins_cnt = tail - head;
+    else ins_cnt = tail + 16 - head;
+    if (ins_cnt > 12) lsb_full = 1;
+    else lsb_full = 0;
   end
   always @(posedge clk) begin
-    debug <= status[head];
+    debug  <= status[head];
     debug1 <= rob_rnm[head];
     if (rst) begin
       head <= 0;
@@ -83,15 +93,29 @@ module load_store_buffer (
       load_finish <= 0;
       store_finish <= 0;
       lsb_flag <= 0;
-    end else if (!rdy) begin
+    end else
+    if (!rdy) begin
 
     end else begin
       //todo 由于和RoB中顺序一致,因此找到第一个未执行的即可,不过就这么写影响应该比较小
       if (lsb_flush) begin
-        for (i = head; i != tail; i = (i + 1) % LSBSIZE) begin
-          if (load_not_store[i]) status[i] <= WRONG;  //未执行的Load在Branch后面
-          else begin
-            if (status[i] == NOTRDY) status[i] <= WRONG;  //未被提交的Store在Branch后面
+        if (tail >= head) begin
+          for (i = 0; i < LSBSIZE; i = i + 1) begin
+            if (i >= head && i < tail) begin
+              if (load_not_store[i]) status[i] <= WRONG;  //未执行的Load在Branch后面
+              else begin
+                if (status[i] == NOTRDY) status[i] <= WRONG;  //未被提交的Store在Branch后面
+              end
+            end
+          end
+        end else begin
+          for (i = 0; i < LSBSIZE; i = i + 1) begin
+            if (i < tail || i >= head) begin
+              if (load_not_store[i]) status[i] <= WRONG;  //未执行的Load在Branch后面
+              else begin
+                if (status[i] == NOTRDY) status[i] <= WRONG;  //未被提交的Store在Branch后面
+              end
+            end
           end
         end
         load_finish <= 0;
@@ -174,9 +198,20 @@ module load_store_buffer (
           store_finish <= 0;
         end
         if (lsb_update_flag) begin
-          for (i = head; i != tail; i = (i + 1) % LSBSIZE) begin
-            if (rob_rnm[i] == lsb_commit_rename && !load_not_store[i])
-              status[i] <= WAITING;  //Store指令被提交
+          if (tail >= head) begin
+            for (i = 0; i < LSBSIZE; i = i + 1) begin
+              if (i >= head && i < tail) begin
+                if (rob_rnm[i] == lsb_commit_rename && !load_not_store[i])
+                  status[i] <= WAITING;  //Store指令被提交
+              end
+            end
+          end else begin
+            for (i = 0; i < LSBSIZE; i = i + 1) begin
+              if (i >= head || i < tail) begin
+                if (rob_rnm[i] == lsb_commit_rename && !load_not_store[i])
+                  status[i] <= WAITING;  //Store指令被提交
+              end
+            end
           end
         end
         if (head != tail && status[head] == WAITING) begin
