@@ -25,27 +25,26 @@ module i_cache (
   reg [15:0] instruction_age[ICSIZE-1:0];  //0为未占用,指令年龄最小为1
   reg cache_miss;
   reg [1:0] status;
-  integer i, ins_to_be_replaced, max_age, has_empty , hit_ins;
+  integer i, ins_to_be_replaced, max_age, has_empty, hit_ins;
   always @(*) begin
     if (if_ins_asked) begin
       cache_miss = 1;
+      max_age = 0;
+      has_empty = 0;
       for (i = 0; i < ICSIZE; i = i + 1) begin
-        if (instruction_pc[i] == if_ins_addr && instruction_age[i] != 0) begin
-          cache_miss = 0;
-          hit_ins = i;
-        end 
-      end
-    end
-    max_age   = 0;
-    has_empty = 0;
-    for (i = 0; i < ICSIZE; i = i + 1) begin
-      if (instruction_age[i] == 0) begin
-        ins_to_be_replaced = i;
-        has_empty = 1;
-      end 
-      if (instruction_age[i] > max_age && !has_empty) begin
-        ins_to_be_replaced = i;
-        max_age = instruction_age[i];
+        if (instruction_age[i] == 0) begin
+          ins_to_be_replaced = i;
+          has_empty = 1;
+        end else begin
+          if (instruction_pc[i] == if_ins_addr) begin
+            cache_miss = 0;
+            hit_ins = i;
+          end
+          if (instruction_age[i] > max_age && !has_empty) begin
+            ins_to_be_replaced = i;
+            max_age = instruction_age[i];
+          end
+        end
       end
     end
   end
@@ -74,16 +73,38 @@ module i_cache (
                 status <= WAITING_MC_ENABLE;
                 mc_ins_asked <= 0;
               end
-              for(i=0;i<ICSIZE;i=i+1)begin
-                if(instruction_age[i] != 0) instruction_age[i] <= instruction_age[i] + 1;
+              for (i = 0; i < ICSIZE; i = i + 4) begin
+                if (instruction_age[i] != 0) instruction_age[i] <= instruction_age[i] + 1;
+              end
+              for (i = 1; i < ICSIZE; i = i + 4) begin
+                if (instruction_age[i] != 0) instruction_age[i] <= instruction_age[i] + 1;
+              end
+              for (i = 2; i < ICSIZE; i = i + 4) begin
+                if (instruction_age[i] != 0) instruction_age[i] <= instruction_age[i] + 1;
+              end
+              for (i = 3; i < ICSIZE; i = i + 4) begin
+                if (instruction_age[i] != 0) instruction_age[i] <= instruction_age[i] + 1;
               end
             end else begin
-              if_ins_rdy   <= 1;
+              if_ins_rdy <= 1;
               mc_ins_asked <= 0;
               if_ins <= instruction[hit_ins];
               instruction_age[hit_ins] <= 1;
-              for(i=0;i<ICSIZE;i=i+1)begin
-                if(i != hit_ins && instruction_age[i] != 0) instruction_age[i] <= instruction_age[i] + 1;
+              for (i = 0; i < ICSIZE; i = i + 4) begin
+                if (i != hit_ins && instruction_age[i] != 0)
+                  instruction_age[i] <= instruction_age[i] + 1;
+              end
+              for (i = 1; i < ICSIZE; i = i + 4) begin
+                if (i != hit_ins && instruction_age[i] != 0)
+                  instruction_age[i] <= instruction_age[i] + 1;
+              end
+              for (i = 2; i < ICSIZE; i = i + 4) begin
+                if (i != hit_ins && instruction_age[i] != 0)
+                  instruction_age[i] <= instruction_age[i] + 1;
+              end
+              for (i = 3; i < ICSIZE; i = i + 4) begin
+                if (i != hit_ins && instruction_age[i] != 0)
+                  instruction_age[i] <= instruction_age[i] + 1;
               end
             end
           end else begin
