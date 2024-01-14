@@ -40,7 +40,7 @@ module reservation_station (
     output reg [31:0] ls_ins_rs1,
     output reg [31:0] store_ins_rs2,
     //ALUs
-    output reg alu1_mission,  //是否向alu1传递新指令
+    output reg alu1_mission,  //是否向alu1传�?�新指令
     output reg [5:0] alu1_op_type,
     output reg [31:0] alu1_rs1,
     output reg [31:0] alu1_rs2,
@@ -97,11 +97,10 @@ module reservation_station (
   reg [3:0] operand_2_ins[RSSIZE-1:0];
   reg operand_1_rdy[RSSIZE-1:0];
   reg operand_2_rdy[RSSIZE-1:0];
-  reg [3:0] rob_rnm[RSSIZE-1:0];  //记录的是来自Rob中哪条指令
+  reg [3:0] rob_rnm[RSSIZE-1:0];  //记录的是来自Rob中哪条指�?
   reg [31:0] load_store_addr_offset[RSSIZE-1:0];
   reg op_is_ls[RSSIZE-1:0];
   reg ins_rename_finish[RSSIZE-1:0];
-  reg [31:0] debug2;
   integer
       i,
       ready1_found,
@@ -113,11 +112,15 @@ module reservation_station (
       ready2_ins,
       ls_ready_found,
       ls_ready_ins;
-  //特判:CDB广播的指令恰巧被查询register信息刚送回来的指令所需要
+  //特判:CDB广播的指令恰巧被查询register信息刚�?�回来的指令�?�?�?
   always @(*) begin
     ready1_found   = 0;
     ready2_found   = 0;
     ls_ready_found = 0;
+    empty_ins = 0;
+    ls_ready_ins = 0;
+    ready1_ins = 0;
+    ready2_ins = 0;
     for (i = 0; i < RSSIZE; i = i + 1) begin
       if (!busy[i]) empty_ins = i;
       else if (operand_1_rdy[i] && operand_2_rdy[i]) begin
@@ -139,7 +142,6 @@ module reservation_station (
     end
   end
   always @(posedge clk) begin
-    debug2 <= operand_2[15];
     if (rst) begin
       rename_need  <= 0;
       ls_mission   <= 0;
@@ -163,8 +165,8 @@ module reservation_station (
         end
       end else begin
         if (rename_finish) begin
-          //上周期询问指令被送回来
-          //简单指令不会被送回来
+          //上周期询问指令被送回�?
+          //�?单指令不会被送回�?
           if (operand_1_busy) begin
             operand_1_ins[rename_finish_id] <= operand_1_rename;
           end else begin
@@ -186,8 +188,8 @@ module reservation_station (
           rename_need_id <= empty_ins;
           new_ins_rd_rename <= rename;
           new_ins_rd <= rename_reg;
-          //下一步是分case对指令进行具体解析，更新其信息，并向register同时传达重命名信息和询问所需寄存器
-          //LUI、JAL、AUIPC已处理完,只需处理剩下的
+          //下一步是分case对指令进行具体解析，更新其信息，并向register同时传达重命名信息和询问�?�?寄存�?
+          //LUI、JAL、AUIPC已处理完,只需处理剩下�?
           case (new_ins[6:0])
             7'b0110111: begin
               //LUI
@@ -387,7 +389,7 @@ module reservation_station (
           end
 
         end
-        //将可执行的语句送入ALU
+        //将可执行的语句�?�入ALU
         if (ready1_found) begin
           alu1_mission <= 1;
           alu1_op_type <= op_type[ready1_ins];

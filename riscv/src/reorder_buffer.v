@@ -73,7 +73,7 @@ module reorder_buffer (
     else begin
       ins_cnt = tail + 16 - head;
     end
-    if (ins_cnt == 16) rob_full = 1;
+    if (ins_cnt > 12) rob_full = 1;
     else rob_full = 0;
   end
   always @(posedge clk) begin

@@ -37,37 +37,8 @@ module register (
   reg [31:0] reg_value[31:0];
   reg reg_busy[31:0];
   reg [3:0] reg_rename[31:0];
-  reg [3:0] debug;
-  reg [31:0] debug1;
-  reg [31:0] debug2;
-  reg [31:0] a0;
-  reg [31:0] a1;
-  reg [31:0] a2;
-  reg [31:0] a3;
-  reg [31:0] a4;
-  reg [31:0] a5;
-  reg [31:0] s0;
-  reg [31:0] s1;
-  reg [31:0] s2;
-  reg [31:0] s3;
-  reg [31:0] s4;
-  reg [31:0] sp;
-  reg debug3;
   integer i;
   always @(posedge clk) begin
-    debug <= reg_rename[13];
-    debug1 <= reg_value[13];
-    debug2 <= reg_value[0];
-    debug3 <= reg_busy[9];
-    a0 <= reg_value[10];
-    a1 <= reg_value[11];
-    a2 <= reg_value[12];
-    a3 <= reg_value[13];
-    a4 <= reg_value[14];
-    a5 <= reg_value[15];
-    s0 <= reg_value[8];
-    s1 <= reg_value[9];
-    sp <= reg_value[2];
     if (rst) begin
       rename_finish <= 0;
       simple_ins_commit <= 0;
@@ -133,7 +104,7 @@ module register (
             if (!rename_need_ins_is_branch_or_store) begin
               //分支指令那个位置不是rd,不需要重命名
               reg_busy[new_ins_rd] <= 1;
-              reg_rename [new_ins_rd] <= new_ins_rd_rename;//理论上来讲后赋�?�会覆盖先赋�?,如果出问题可改成特判
+              reg_rename [new_ins_rd] <= new_ins_rd_rename;//理论上来讲后赋�?�会覆盖先赋�?,如果出问题可改成特判
             end
             rename_finish_id <= rename_need_id;
           end

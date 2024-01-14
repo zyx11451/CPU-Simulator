@@ -33,6 +33,19 @@ module cdb (
 );
 
   always @(*) begin
+    rs_update_flag = 0;
+    register_update_flag = 0;
+    branch_commit = 0;
+    jalr_commit = 0;
+    lsb_update_flag = 0;
+    register_commit_dest = 0;
+    register_value = 0;
+    rename_sent_to_register = 0;
+    branch_jump = 0;
+    jalr_addr = 0;
+    lsb_commit_rename = 0;
+    rs_commit_rename = 0;
+    rs_value = 0;
     if (cdb_flush) begin
       rs_update_flag = 0;
       register_update_flag = 0;

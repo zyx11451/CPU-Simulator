@@ -64,6 +64,7 @@ module load_store_buffer (
   //完全顺序
   //如果之前送进去的指令不为Sb,则要等待一个回合再尝试送S类指令。
   always @(*) begin
+    rs_inf_update_ins = 0;
     if (ls_mission) begin
       if (tail >= head) begin
         for (i = 0; i < LSBSIZE; i = i + 1) begin

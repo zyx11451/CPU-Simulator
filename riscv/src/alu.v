@@ -52,6 +52,8 @@ module alu (
   parameter OR = 36;
   parameter AND = 37;
   always @(*) begin
+    dest = 0;
+    alu_out = 0;
     if (alu_mission) begin
       case (alu_op_type)
         JALR: alu_out = ((alu_rs1 + alu_rs2) & 32'hFFFFFFFE);
