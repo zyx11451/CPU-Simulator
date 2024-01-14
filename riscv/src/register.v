@@ -114,6 +114,8 @@ module register (
                 operand_1_busy <= 0;
                 operand_1_data_from_reg <= reg_value[operand_1_reg];
               end
+            end else begin
+              operand_1_busy <= 0;
             end
             if (operand_2_flag) begin
               if (reg_busy[operand_2_reg]) begin
@@ -129,6 +131,8 @@ module register (
                 operand_2_busy <= 0;
                 operand_2_data_from_reg <= reg_value[operand_2_reg];
               end
+            end else begin
+              operand_2_busy <= 0;
             end
             if (!rename_need_ins_is_branch_or_store) begin
               //分支指令那个位置不是rd,不需要重命名

@@ -50,10 +50,6 @@ module predictor (
   reg miss, replace_found;
   reg other_flushing;  //为避免在送出flush的下一个周期接到提交或询问导致错误
   always @(*) begin
-    miss = 1;
-    replace_ins = 0;
-    hit_ins = 0;
-    now_oldest_ins = 0;
     if (ask_predictor) begin
       miss = 1;
       replace_found = 0;

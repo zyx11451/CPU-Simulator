@@ -69,13 +69,13 @@ module load_store_buffer (
       if (tail >= head) begin
         for (i = 0; i < LSBSIZE; i = i + 1) begin
           if (i >= head && i < tail) begin
-            if (rob_rnm[i] == ls_ins_rnm) rs_inf_update_ins = i;
+            if (rob_rnm[i] == ls_ins_rnm && status[i] == NOTRDY) rs_inf_update_ins = i;
           end
         end
       end else begin
         for (i = 0; i < LSBSIZE; i = i + 1) begin
           if (i >= head || i < tail) begin
-            if (rob_rnm[i] == ls_ins_rnm) rs_inf_update_ins = i;
+            if (rob_rnm[i] == ls_ins_rnm && status[i] == NOTRDY) rs_inf_update_ins = i;
           end
         end
       end
@@ -202,14 +202,14 @@ module load_store_buffer (
           if (tail >= head) begin
             for (i = 0; i < LSBSIZE; i = i + 1) begin
               if (i >= head && i < tail) begin
-                if (rob_rnm[i] == lsb_commit_rename && !load_not_store[i])
+                if (status[i] == NOTRDY && rob_rnm[i] == lsb_commit_rename && !load_not_store[i])
                   status[i] <= WAITING;  //Store指令被提交
               end
             end
           end else begin
             for (i = 0; i < LSBSIZE; i = i + 1) begin
               if (i >= head || i < tail) begin
-                if (rob_rnm[i] == lsb_commit_rename && !load_not_store[i])
+                if (status[i] == NOTRDY && rob_rnm[i] == lsb_commit_rename && !load_not_store[i])
                   status[i] <= WAITING;  //Store指令被提交
               end
             end
