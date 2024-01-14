@@ -97,10 +97,14 @@ module reservation_station (
   reg [3:0] operand_2_ins[RSSIZE-1:0];
   reg operand_1_rdy[RSSIZE-1:0];
   reg operand_2_rdy[RSSIZE-1:0];
-  reg [3:0] rob_rnm[RSSIZE-1:0];  //记录的是来自Rob中哪条指�?
+  reg [3:0] rob_rnm[RSSIZE-1:0]; 
   reg [31:0] load_store_addr_offset[RSSIZE-1:0];
   reg op_is_ls[RSSIZE-1:0];
   reg ins_rename_finish[RSSIZE-1:0];
+  reg debug;
+  reg [31:0] debug2;
+  reg [3:0] debug3;
+  reg debug4;
   integer
       i,
       ready1_found,
@@ -112,7 +116,6 @@ module reservation_station (
       ready2_ins,
       ls_ready_found,
       ls_ready_ins;
-  //特判:CDB广播的指令恰巧被查询register信息刚�?�回来的指令�?�?�?
   always @(*) begin
     ready1_found   = 0;
     ready2_found   = 0;
@@ -142,6 +145,10 @@ module reservation_station (
     end
   end
   always @(posedge clk) begin
+    debug <= operand_2_rdy[13];
+    debug2 <= operand_2[13];
+    debug3 <= operand_2_ins[13];
+    debug4 <= ins_rename_finish[13];
     if (rst) begin
       rename_need  <= 0;
       ls_mission   <= 0;
@@ -378,11 +385,11 @@ module reservation_station (
             end
           end
           if (rename_finish) begin
-            if (operand_1_busy && operand_1_rename == rs_commit_rename) begin
+            if (!operand_1_rdy[rename_finish_id] && operand_1_busy && operand_1_rename == rs_commit_rename) begin
               operand_1_rdy[rename_finish_id] <= 1;
               operand_1[rename_finish_id] <= rs_value;
             end
-            if (operand_2_busy && operand_2_rename == rs_commit_rename) begin
+            if (!operand_2_rdy[rename_finish_id] && operand_2_busy && operand_2_rename == rs_commit_rename) begin
               operand_2_rdy[rename_finish_id] <= 1;
               operand_2[rename_finish_id] <= rs_value;
             end
