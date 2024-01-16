@@ -145,10 +145,6 @@ module reservation_station (
     end
   end
   always @(posedge clk) begin
-    debug <= operand_2_rdy[13];
-    debug2 <= operand_2[13];
-    debug3 <= operand_2_ins[13];
-    debug4 <= ins_rename_finish[13];
     if (rst) begin
       rename_need  <= 0;
       ls_mission   <= 0;
@@ -394,7 +390,6 @@ module reservation_station (
               operand_2[rename_finish_id] <= rs_value;
             end
           end
-
         end
         //将可执行的语句�?�入ALU
         if (ready1_found) begin

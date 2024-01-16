@@ -11,6 +11,7 @@ module reorder_buffer (
     //LSB 指令发射
     output reg new_ls_ins_flag,
     output reg [3:0] new_ls_ins_rnm,
+    output reg [3:0] rob_head,//for io
     //LSB Load提交或STORE整理完
     input wire load_finish,
     input wire [3:0] load_finish_rename,
@@ -79,6 +80,7 @@ module reorder_buffer (
   always @(posedge clk) begin
     if (rst) begin
       head <= 0;
+      rob_head <= 0;
       tail <= 0;
       tail_less_than_head <= 0;
       new_ls_ins_flag <= 0;
@@ -88,6 +90,7 @@ module reorder_buffer (
     if (!rdy) begin
 
     end else begin
+      rob_head <= head;//上一个周期的head值，因为前一个指令提交到flush信号发出需要额外的一个周期
       if (rob_flush) begin
         head <= 0;
         tail <= 0;

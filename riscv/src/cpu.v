@@ -90,6 +90,7 @@ module cpu (
 
   wire rob_lsb_new_ls_ins_flag;
   wire [3:0] rob_lsb_new_ls_ins_rnm;
+  wire [3:0] rob_lsb_rob_head;
   wire lsb_rob_load_finish;
   wire [3:0] lsb_rob_load_finish_rename;
   wire [31:0] lsb_rob_ld_data;
@@ -282,6 +283,7 @@ module cpu (
       //lsb
       .new_ls_ins_flag(rob_lsb_new_ls_ins_flag),
       .new_ls_ins_rnm(rob_lsb_new_ls_ins_rnm),
+      .rob_head(rob_lsb_rob_head),
       .load_finish(lsb_rob_load_finish),
       .load_finish_rename(lsb_rob_load_finish_rename),
       .ld_data(lsb_rob_ld_data),
@@ -376,6 +378,7 @@ module cpu (
       //rob
       .new_ls_ins_flag(rob_lsb_new_ls_ins_flag),
       .new_ls_ins_rnm(rob_lsb_new_ls_ins_rnm),
+      .rob_head(rob_lsb_rob_head),
       .load_finish(lsb_rob_load_finish),
       .load_finish_rename(lsb_rob_load_finish_rename),
       .ld_data(lsb_rob_ld_data),

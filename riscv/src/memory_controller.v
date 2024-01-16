@@ -134,14 +134,15 @@ module memory_controller (
             end
           end else begin
             data_stage <= data_stage + 1;
-            addr <= addr + 1;
+            if(data_stage != data_size) addr <= addr + 1;
+            else addr <= 0;
             lsb_enable <= 0;
             ic_enable <= 0;
             if (ic_flag) now_ins_waiting <= 1;
           end
         end
         DATA_WRITING: begin
-         // if (data_addr[17:16] != 2'b11 || ~io_buffer_full) begin
+         if (data_addr[17:16] != 2'b11 || ~io_buffer_full) begin
             ins_rdy <= 0;
             lsb_enable <= 0;
             ic_enable <= 0;
@@ -175,7 +176,7 @@ module memory_controller (
             if (ic_flag) begin
               now_ins_waiting <= 1;
             end
-          //end 
+          end 
 
         end
         INS_READING: begin

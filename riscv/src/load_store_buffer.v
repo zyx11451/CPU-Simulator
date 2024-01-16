@@ -5,6 +5,7 @@ module load_store_buffer (
     //rob 发射
     input wire new_ls_ins_flag,
     input wire [3:0] new_ls_ins_rnm,
+    input wire [3:0] rob_head,//for io
     //rob Load提交或STORE整理完
     output reg load_finish,
     output reg [3:0] load_finish_rename,
@@ -60,6 +61,7 @@ module load_store_buffer (
   reg [3:0] head, tail;
   reg [2:0] debug;
   reg [3:0] debug1;
+  wire [31:0] head_addr = target_addr[head];
   integer i, rs_inf_update_ins, ins_cnt;
   //完全顺序
   //如果之前送进去的指令不为Sb,则要等待一个回合再尝试送S类指令。
@@ -82,7 +84,7 @@ module load_store_buffer (
     end
     if (tail >= head) ins_cnt = tail - head;
     else ins_cnt = tail + 16 - head;
-    if (ins_cnt > 12) lsb_full = 1;
+    if (ins_cnt > 8) lsb_full = 1;
     else lsb_full = 0;
   end
   always @(posedge clk) begin
@@ -98,7 +100,7 @@ module load_store_buffer (
     if (!rdy) begin
 
     end else begin
-      //todo 由于和RoB中顺序一致,因此找到第一个未执行的即可,不过就这么写影响应该比较小
+      //由于和RoB中顺序一致,因此找到第一个未执行的即可,不过就这么写影响应该比较小
       if (lsb_flush) begin
         if (tail >= head) begin
           for (i = 0; i < LSBSIZE; i = i + 1) begin
@@ -217,20 +219,36 @@ module load_store_buffer (
         end
         if (head != tail && status[head] == WAITING) begin
           if (lsb_enable) begin
-            status[head] <= EXEC;
             if (load_not_store[head]) begin
-              lsb_flag <= 1;
-              lsb_r_nw <= 1;
-              data_size_to_mc <= data_size[head];
-              data_addr <= target_addr[head];
-              load_sign <= signed_not_unsigned[head];
+              if (head_addr[17:16] != 2'b11) begin
+                status[head] <= EXEC;
+                lsb_flag <= 1;
+                lsb_r_nw <= 1;
+                data_size_to_mc <= data_size[head];
+                data_addr <= target_addr[head];
+                load_sign <= signed_not_unsigned[head];
+              end else begin
+                if (rob_rnm[head] == rob_head) begin
+                  status[head] <= EXEC;
+                  lsb_flag <= 1;
+                  lsb_r_nw <= 1;
+                  data_size_to_mc <= data_size[head];
+                  data_addr <= target_addr[head];
+                  load_sign <= signed_not_unsigned[head];
+                end else begin
+                  lsb_flag <= 0;
+                end
+              end
             end else begin
+              status[head] <= EXEC;
               lsb_flag <= 1;
               lsb_r_nw <= 0;
               data_size_to_mc <= data_size[head];
               data_addr <= target_addr[head];
               data_write <= data[head];
             end
+          end else begin
+            lsb_flag <= 0;
           end
         end else begin
           lsb_flag <= 0;
